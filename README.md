@@ -294,4 +294,4 @@ To add support for a new language:
 ## Acknowledgements
 
 - Built on top of [leo-profanity](https://github.com/jojoee/leo-profanity)
-- Thanks to all contributors who have helped expand the language suppor
+
