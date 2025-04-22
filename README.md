@@ -275,7 +275,7 @@ AllProfanity works in all modern browsers and Node.js environments.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/yourusername/allprofanity/blob/main/LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/ayush-jadaun/allprofanity/blob/main/LICENSE) file for details.
 
 ## Contributing
 
