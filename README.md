@@ -18,6 +18,7 @@ A comprehensive multi-language profanity filter for JavaScript/TypeScript applic
   - Set custom placeholder characters or strings
 - **Zero Dependencies**: Only depends on leo-profanity as the base filter
 - **TypeScript Support**: Full TypeScript type definitions included
+- **Extensible**: Designed with multi-language support in mind, making it easy to add more languages in the future
 
 ## Installation
 
@@ -25,6 +26,8 @@ A comprehensive multi-language profanity filter for JavaScript/TypeScript applic
 npm install allprofanity
 # or
 yarn add allprofanity
+# or
+pnpm add allprofanity
 ```
 
 ## Basic Usage
@@ -148,7 +151,13 @@ profanity.check('This is ass and that's bad.');     // true
 
 ## Language Support
 
-### Hindi/Hinglish Support
+### Current Languages
+
+#### English
+
+Built on top of the leo-profanity library, AllProfanity includes comprehensive English profanity detection.
+
+#### Hindi/Hinglish Support
 
 The library comes pre-loaded with an extensive list of Hindi profanities in both Devanagari and Roman scripts, as well as common Hinglish abbreviations and variations.
 
@@ -162,6 +171,10 @@ profanity.check('Is vakya mein lund shabd hai.');  // true
 // Hinglish abbreviations
 profanity.check('Usne bc kaha.');  // true
 ```
+
+### Future Language Support
+
+AllProfanity is designed with extensibility in mind. Future versions will include support for additional languages. If you'd like to contribute language packs, please see the Contributing section below.
 
 ## Mixed Language Content
 
@@ -204,6 +217,37 @@ const kidSafeFilter = new AllProfanity({ includeModerate: true });
 const adultFilter = new AllProfanity({ includeModerate: false });
 ```
 
+## Advanced Use Cases
+
+### Performance Optimization
+
+For applications processing large volumes of text:
+
+```javascript
+// Pre-compile your most used strings for faster checking
+const badWordsList = profanity.list();
+const preCompiledRegex = new RegExp('\\b(' + badWordsList.join('|') + ')\\b', 'i');
+
+function quickCheck(text) {
+  return preCompiledRegex.test(text);
+}
+```
+
+### Content Moderation Systems
+
+```javascript
+function moderateContent(content) {
+  if (profanity.check(content)) {
+    return {
+      isApproved: false,
+      cleanedContent: profanity.cleanWithWord(content, '[INAPPROPRIATE]'),
+      reason: 'Contains profanity'
+    };
+  }
+  return { isApproved: true, cleanedContent: content };
+}
+```
+
 ## Use Cases
 
 - Content moderation systems
@@ -214,15 +258,40 @@ const adultFilter = new AllProfanity({ includeModerate: false });
 - Social media content filtering
 - Comment sections
 - Gaming chat filters
+- Email filtering
+- Document processing systems
 
 ## Browser Support
 
 AllProfanity works in all modern browsers and Node.js environments.
 
+## Roadmap
+
+- Add support for more languages (Spanish, French, German, Arabic, etc.)
+- Contextual profanity detection
+- Severity levels for different categories of profanity
+- Phonetic matching for evasion attempts
+- Plugin system for custom detection strategies
+
 ## License
 
-MIT
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/yourusername/allprofanity/blob/main/LICENSE) file for details.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request
+Contributions are welcome! Whether it's adding new language support, improving detection algorithms, or enhancing documentation.
+
+Please feel free to submit a Pull Request or open an Issue on GitHub.
+
+### Adding a New Language
+
+To add support for a new language:
+
+1. Create a new file in the `src/languages` directory (e.g., `french-words.ts`)
+2. Follow the format of the existing word lists
+3. Submit a pull request with your changes
+
+## Acknowledgements
+
+- Built on top of [leo-profanity](https://github.com/jojoee/leo-profanity)
+- Thanks to all contributors who have helped expand the language suppor

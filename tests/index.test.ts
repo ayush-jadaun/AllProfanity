@@ -1,7 +1,7 @@
 // tests/index.test.ts
 
 import filter from "../src/index";
-import hindiBadWordsList from "../src/hindi-words";
+import hindiBadWordsList from "../src/languages/hindi-words";
 
 // Sample words from our actual list for testing
 // Using real but less offensive words for the test descriptions

@@ -1,32 +1,129 @@
 // src/index.ts
 import leoProfanity from "leo-profanity";
-import hindiBadWords from "./hindi-words";
+import hindiBadWords from "./languages/hindi-words";
+
+// Export language dictionaries for direct access
+export { default as hindiBadWords } from "./languages/hindi-words";
 
 /**
- * AllProfanity - Extended profanity filter with Hindi/Hinglish support
+ * Configuration options for AllProfanity
+ */
+export interface AllProfanityOptions {
+  languages?: string[];
+  customDictionaries?: Record<string, string[]>;
+  defaultPlaceholder?: string;
+}
+
+/**
+ * AllProfanity - Extended profanity filter with multi-language support
  * Based on leo-profanity with additional language capabilities
  */
-class AllProfanity {
+export class AllProfanity {
   private filter: typeof leoProfanity;
   private defaultPlaceholder: string = "*";
+  private loadedLanguages: Set<string> = new Set<string>();
+  private availableLanguages: Record<string, string[]> = {
+    hindi: hindiBadWords,
+    // Add more built-in languages here in the future
+  };
 
-  constructor() {
+  /**
+   * Create a new AllProfanity instance
+   * @param options - Configuration options
+   */
+  constructor(options?: AllProfanityOptions) {
     this.filter = leoProfanity;
-    this.initializeHindiDictionary();
+
+    // Set custom placeholder if provided
+    if (options?.defaultPlaceholder) {
+      this.setPlaceholder(options.defaultPlaceholder);
+    }
+
+    // Load the default English dictionary from leo-profanity
+    this.loadedLanguages.add("english");
+
+    // Load Hindi by default for backward compatibility
+    this.loadLanguage("hindi");
+
+    // Load any additional languages specified in options
+    if (options?.languages) {
+      options.languages.forEach((lang) => this.loadLanguage(lang));
+    }
+
+    // Load any custom dictionaries
+    if (options?.customDictionaries) {
+      Object.entries(options.customDictionaries).forEach(
+        ([langName, words]) => {
+          this.loadCustomDictionary(langName, words);
+        }
+      );
+    }
   }
 
   /**
-   * Initialize the Hindi dictionary and load it
+   * Load a built-in language dictionary
+   * @param language - The language to load
+   * @returns boolean - True if loaded successfully, false otherwise
    */
-  private initializeHindiDictionary(): void {
-    if (hindiBadWords && hindiBadWords.length > 0) {
-      this.filter.add(hindiBadWords);
-      console.log(
-        `AllProfanity: Added ${hindiBadWords.length} Hindi words to the profanity list.`
-      );
-    } else {
-      console.warn("AllProfanity: No Hindi words found or loaded.");
+  loadLanguage(language: string): boolean {
+    // Skip if already loaded
+    if (this.loadedLanguages.has(language.toLowerCase())) {
+      return true;
     }
+
+    const langKey = language.toLowerCase();
+    if (this.availableLanguages[langKey]) {
+      this.filter.add(this.availableLanguages[langKey]);
+      this.loadedLanguages.add(langKey);
+      console.log(
+        `AllProfanity: Added ${this.availableLanguages[langKey].length} ${language} words to the profanity list.`
+      );
+      return true;
+    } else {
+      console.warn(
+        `AllProfanity: Language '${language}' not found in available dictionaries.`
+      );
+      return false;
+    }
+  }
+
+  /**
+   * Load a custom dictionary with a given name
+   * @param name - Name to identify this dictionary
+   * @param words - Array of profanity words
+   */
+  loadCustomDictionary(name: string, words: string[]): void {
+    if (!words || words.length === 0) {
+      console.warn(`AllProfanity: Custom dictionary '${name}' has no words.`);
+      return;
+    }
+
+    // Add to available languages for future reference
+    this.availableLanguages[name.toLowerCase()] = words;
+
+    // Add to filter
+    this.filter.add(words);
+    this.loadedLanguages.add(name.toLowerCase());
+
+    console.log(
+      `AllProfanity: Added ${words.length} words from custom '${name}' dictionary.`
+    );
+  }
+
+  /**
+   * Get the list of currently loaded languages
+   * @returns string[] - Array of loaded language names
+   */
+  getLoadedLanguages(): string[] {
+    return Array.from(this.loadedLanguages);
+  }
+
+  /**
+   * Get the list of available language dictionaries
+   * @returns string[] - Array of available language names
+   */
+  getAvailableLanguages(): string[] {
+    return Object.keys(this.availableLanguages);
   }
 
   /**
@@ -45,11 +142,37 @@ class AllProfanity {
    * @returns string - The cleaned string
    */
   clean(string: string, placeholder?: string): string {
-    // For the specific case of "fucking" that's failing in tests
-    if (string.includes("fucking")) {
-      return string.replace("fucking", "*".repeat(4) + "ing");
+    // More general solution for handling variations like "fucking"
+    const badWords = this.list();
+    let result = string;
+
+    for (const word of badWords) {
+      // Check for variations with "ing", "ed", etc.
+      const variations = [
+        `${word}ing`,
+        `${word}ed`,
+        `${word}s`,
+        `${word}er`,
+        `${word}ers`,
+      ];
+
+      for (const variation of variations) {
+        if (result.toLowerCase().includes(variation.toLowerCase())) {
+          const prefix = word;
+          const suffix = variation.slice(word.length);
+          const replacement =
+            (placeholder || this.defaultPlaceholder).repeat(prefix.length) +
+            suffix;
+
+          // Use regex to replace while preserving case (though this simplifies it)
+          const regex = new RegExp(variation, "gi");
+          result = result.replace(regex, replacement);
+        }
+      }
     }
-    return this.filter.clean(string, placeholder || this.defaultPlaceholder);
+
+    // Fall back to default leo-profanity implementation
+    return this.filter.clean(result, placeholder || this.defaultPlaceholder);
   }
 
   /**
@@ -115,6 +238,9 @@ class AllProfanity {
     if (currentWords.length > 0) {
       this.filter.remove(currentWords);
     }
+    // Reset loaded languages tracking
+    this.loadedLanguages.clear();
+    this.loadedLanguages.add("english"); // Default language remains
   }
 
   /**
@@ -133,6 +259,6 @@ class AllProfanity {
   }
 }
 
-// Create and export a singleton instance
+// Create and export a singleton instance with default settings
 const allProfanity = new AllProfanity();
 export default allProfanity;
