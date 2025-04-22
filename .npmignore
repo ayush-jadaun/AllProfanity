@@ -1,0 +1,116 @@
+# Source files
+src/
+tests/
+examples/
+benchmarks/
+docs/
+
+# Configuration files
+tsconfig.json
+jest.config.js
+.eslintrc
+.prettierrc
+.editorconfig
+.travis.yml
+.github/
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__/
+__mocks__/
+
+# Development files
+.vscode/
+.idea/
+.git/
+.gitignore
+.npmignore
+*.tsbuildinfo
+
+# Documentation and examples
+docs/
+examples/
+benchmarks/
+*.md
+!README.md
+
+# Build artifacts
+coverage/
+.nyc_output/
+benchmark-results/
+
+# Environment files
+.env*
+*.env
+
+# Logs and temporary files
+logs/
+*.log
+tmp/
+temp/
+*.tmp
+
+# Dependencies
+node_modules/
+yarn.lock
+package-lock.json
+
+# Development configs
+.git/
+.gitignore
+.github/
+tsconfig.json
+.editorconfig
+.prettierrc
+.eslintrc
+.eslintignore
+.travis.yml
+.circleci/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs and debugging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+.npm
+.yarn
+.pnp.*
+
+# Environment variables
+.env
+.env.*
+.env.local
+.env.*.local
+
+# Documentation source files
+docs/
+examples/
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Build process
+*.tsbuildinfo
+.travis.yml
+.gitlab-ci.yml
+azure-pipelines.yml
+
+# Demo and example files
+demo/
+src/demo.ts
+
+# Cache directories
+.cache/
+.eslintcache 
