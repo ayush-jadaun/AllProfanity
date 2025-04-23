@@ -343,7 +343,7 @@ const hindiBadWords: string[] = [
   "तेरी माँ की", // Teri maa ki... (start of insult)
   "बहन के लोड़े", // Behen ke lode (Sister's dick - offensive)
 
-  // Add more words and variations as needed...
+  // Add more words
 
 ];
 
