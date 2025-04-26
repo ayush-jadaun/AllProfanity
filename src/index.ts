@@ -1,4 +1,3 @@
-// src/index.ts
 import leoProfanity from "leo-profanity";
 import hindiBadWords from "./languages/hindi-words";
 import frenchBadWords from "./languages/french-words";

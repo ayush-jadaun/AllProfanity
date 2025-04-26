@@ -1,9 +1,6 @@
-// src/types/leo-profanity.d.ts
-
-// Declare the module 'leo-profanity'
+// Declare the module 'leo-profanity' as an ES module
 declare module "leo-profanity" {
-  // Define the shape of the default export (the profanity instance)
-  interface ProfanityFilter {
+  export interface ProfanityFilter {
     /**
      * Checks if a text contains profanity.
      * @param text The text to check.
@@ -42,10 +39,9 @@ declare module "leo-profanity" {
      * @param words An array of words to set as the new list.
      */
     load(words: string[]): void;
-
   }
 
-  // Declare the default export of the module
+  // Export the default filter as an ES module default export
   const filter: ProfanityFilter;
-  export = filter; 
+  export default filter;
 }
