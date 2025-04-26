@@ -1,14 +1,14 @@
 # AllProfanity
 
-A comprehensive multi-language profanity filter for JavaScript/TypeScript applications with built-in support for English, Hindi, and Hinglish content.
+A comprehensive multi-language profanity filter for JavaScript/TypeScript applications with built-in support for English, Hindi, Hinglish, Bengali, Tamil, Telugu, French, German, and Spanish content.
 
 [![npm version](https://img.shields.io/npm/v/allprofanity.svg)](https://www.npmjs.com/package/allprofanity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
 
-- **Multi-language Support**: Pre-loaded with English profanities (from leo-profanity) and an extensive Hindi/Hinglish dictionary
-- **Multiple Scripts**: Detects profanity in both Latin/Roman and Devanagari scripts
+- **Multi-language Support**: Pre-loaded with English profanities (from leo-profanity) and extensive dictionaries for Hindi/Hinglish, Bengali, Tamil, Telugu, French, German, and Spanish
+- **Multiple Scripts**: Detects profanity in both Latin/Roman and native scripts (Devanagari, Bengali, Tamil, Telugu)
 - **Case Insensitive**: Works regardless of letter case
 - **Flexible Cleaning Options**:
   - Character-level replacement (each character of a profane word becomes a placeholder)
@@ -172,9 +172,66 @@ profanity.check('Is vakya mein lund shabd hai.');  // true
 profanity.check('Usne bc kaha.');  // true
 ```
 
+#### Indian Languages
+
+AllProfanity supports multiple Indian languages including Bengali, Tamil, and Telugu in both their native scripts and Roman transliterations.
+
+```javascript
+// Bengali in Bengali script
+profanity.check('এই বাক্যে বাল শব্দ আছে।');  // true
+
+// Tamil in Tamil script
+profanity.check('இந்த வாக்கியத்தில் கூதி உள்ளது.');  // true
+
+// Telugu in Telugu script
+profanity.check('ఈ వాక్యంలో పూకు పదం ఉంది.');  // true
+
+// Loading all Indian languages at once
+import { AllProfanity } from 'allprofanity';
+const filter = new AllProfanity();
+filter.loadIndianLanguages();  // Loads Hindi, Bengali, Tamil, and Telugu
+```
+
+#### European Languages
+
+AllProfanity also supports several European languages including French, German, and Spanish.
+
+```javascript
+// French example
+profanity.check('Cette phrase contient le mot merde.');  // true
+
+// German example
+profanity.check('Dieser Satz enthält das Wort scheisse.');  // true
+
+// Spanish example
+profanity.check('Esta frase contiene la palabra mierda.');  // true
+```
+
+### Loading Additional Languages
+
+By default, only English and Hindi are loaded. You can load additional languages as needed:
+
+```javascript
+// Load individual languages
+profanity.loadLanguage('bengali');
+profanity.loadLanguage('tamil');
+profanity.loadLanguage('french');
+
+// Load multiple languages at once
+profanity.loadLanguages(['telugu', 'german', 'spanish']);
+
+// Get available languages
+const availableLanguages = profanity.getAvailableLanguages();
+// => ['hindi', 'bengali', 'tamil', 'telugu', 'french', 'german', 'spanish']
+
+// Get currently loaded languages
+const loadedLanguages = profanity.getLoadedLanguages();
+// => ['english', 'hindi', ...]
+```
+
 ### Future Language Support
 
-AllProfanity is designed with extensibility in mind. Future versions will include support for additional languages. If you'd like to contribute language packs, please see the Contributing section below.
+AllProfanity is designed with extensibility in mind. If you'd like to contribute language packs, please see the Contributing section below.
 
 ## Mixed Language Content
 
@@ -189,16 +246,14 @@ profanity.check('I'm saying मादरचोद and bullshit in one sentence.'
 
 ### Adding Custom Profanity Lists
 
-You can add your own profanity lists to extend support for other languages:
+You can add your own profanity lists to extend support for other languages or add additional words to existing languages:
 
 ```javascript
-// Add Spanish profanity words
+// Add custom profanity words
 profanity.add([
-  'mierda',
-  'puta',
-  'pendejo',
-  'carajo',
-  'coño'
+  'customword1',
+  'customword2',
+  'customword3'
 ]);
 
 // Now it will detect Spanish profanity

@@ -43,10 +43,9 @@ declare module "leo-profanity" {
      */
     load(words: string[]): void;
 
-    // Add other methods if you use them (e.g., specific dictionary methods)
   }
 
   // Declare the default export of the module
   const filter: ProfanityFilter;
-  export = filter; // Use 'export =' for compatibility with CommonJS module.exports = instance
+  export = filter; 
 }
