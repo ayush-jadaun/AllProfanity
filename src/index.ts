@@ -1,20 +1,20 @@
 import leoProfanity from "leo-profanity";
-import hindiBadWords from "./languages/hindi-words";
-import frenchBadWords from "./languages/french-words";
-import germanBadWords from "./languages/german-words";
-import spanishBadWords from "./languages/spanish-words";
-import bengaliBadWords from "./languages/bengali-words";
-import tamilBadWords from "./languages/tamil-words";
-import teluguBadWords from "./languages/telugu-words";
+import hindiBadWords from "./languages/hindi-words.js";
+import frenchBadWords from "./languages/french-words.js";
+import germanBadWords from "./languages/german-words.js";
+import spanishBadWords from "./languages/spanish-words.js";
+import bengaliBadWords from "./languages/bengali-words.js";
+import tamilBadWords from "./languages/tamil-words.js";
+import teluguBadWords from "./languages/telugu-words.js";
 
 // Export language dictionaries for direct access
-export { default as hindiBadWords } from "./languages/hindi-words";
-export { default as frenchBadWords } from "./languages/french-words";
-export { default as germanBadWords } from "./languages/german-words";
-export { default as spanishBadWords } from "./languages/spanish-words";
-export { default as bengaliBadWords } from "./languages/bengali-words";
-export { default as tamilBadWords } from "./languages/tamil-words";
-export { default as teluguBadWords } from "./languages/telugu-words";
+export { default as hindiBadWords } from "./languages/hindi-words.js";
+export { default as frenchBadWords } from "./languages/french-words.js";
+export { default as germanBadWords } from "./languages/german-words.js";
+export { default as spanishBadWords } from "./languages/spanish-words.js";
+export { default as bengaliBadWords } from "./languages/bengali-words.js";
+export { default as tamilBadWords } from "./languages/tamil-words.js";
+export { default as teluguBadWords } from "./languages/telugu-words.js";
 
 /**
  * Configuration options for AllProfanity
