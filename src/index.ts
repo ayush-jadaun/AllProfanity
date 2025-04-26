@@ -1,9 +1,21 @@
 // src/index.ts
 import leoProfanity from "leo-profanity";
 import hindiBadWords from "./languages/hindi-words";
+import frenchBadWords from "./languages/french-words";
+import germanBadWords from "./languages/german-words";
+import spanishBadWords from "./languages/spanish-words";
+import bengaliBadWords from "./languages/bengali-words";
+import tamilBadWords from "./languages/tamil-words";
+import teluguBadWords from "./languages/telugu-words";
 
 // Export language dictionaries for direct access
 export { default as hindiBadWords } from "./languages/hindi-words";
+export { default as frenchBadWords } from "./languages/french-words";
+export { default as germanBadWords } from "./languages/german-words";
+export { default as spanishBadWords } from "./languages/spanish-words";
+export { default as bengaliBadWords } from "./languages/bengali-words";
+export { default as tamilBadWords } from "./languages/tamil-words";
+export { default as teluguBadWords } from "./languages/telugu-words";
 
 /**
  * Configuration options for AllProfanity
@@ -24,6 +36,12 @@ export class AllProfanity {
   private loadedLanguages: Set<string> = new Set<string>();
   private availableLanguages: Record<string, string[]> = {
     hindi: hindiBadWords,
+    french: frenchBadWords,
+    german: germanBadWords,
+    spanish: spanishBadWords,
+    bengali: bengaliBadWords,
+    tamil: tamilBadWords,
+    telugu: teluguBadWords,
     // Add more built-in languages here in the future
   };
 
@@ -85,6 +103,30 @@ export class AllProfanity {
       );
       return false;
     }
+  }
+
+  /**
+   * Load multiple languages at once
+   * @param languages - Array of language names to load
+   * @returns number - Number of successfully loaded languages
+   */
+  loadLanguages(languages: string[]): number {
+    let successCount = 0;
+    languages.forEach((lang) => {
+      if (this.loadLanguage(lang)) {
+        successCount++;
+      }
+    });
+    return successCount;
+  }
+
+  /**
+   * Load all Indian languages at once
+   * @returns number - Number of Indian languages loaded
+   */
+  loadIndianLanguages(): number {
+    const indianLanguages = ["hindi", "bengali", "tamil", "telugu"];
+    return this.loadLanguages(indianLanguages);
   }
 
   /**
