@@ -1,5 +1,3 @@
-// src/languages/bengali-words.ts
-
 /**
  * Bengali profanity words list
  * Contains common profanities in both Bengali script and Roman transliteration

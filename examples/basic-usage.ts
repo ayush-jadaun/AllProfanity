@@ -1,11 +1,22 @@
-// examples/basic-usage.ts
-import allProfanity from "../src/index";
+import allProfanity, {
+  englishBadWords,
+  hindiBadWords,
+  frenchBadWords,
+  germanBadWords,
+  spanishBadWords,
+  bengaliBadWords,
+  tamilBadWords,
+  teluguBadWords,
+  AllProfanity,
+  ProfanitySeverity,
+  ProfanityDetectionResult,
+} from "../src/index";
 
 /**
  * AllProfanity Library - Example Usage
  *
  * This example demonstrates all the main features of the AllProfanity library
- * including profanity detection, cleaning, and list management across multiple languages.
+ * including profanity detection, advanced detection, cleaning, and list management across multiple languages.
  */
 
 // Function to display section headers nicely
@@ -19,6 +30,20 @@ function displaySection(title: string): void {
 function displayCheck(text: string): void {
   const result = allProfanity.check(text);
   console.log(`"${text}" ${result ? "✘ CONTAINS PROFANITY" : "✓ CLEAN"}`);
+}
+
+// Function to display advanced detection results
+function displayDetect(text: string): void {
+  const result: ProfanityDetectionResult = allProfanity.detect(text);
+  if (result.hasProfanity) {
+    console.log(
+      `"${text}" ✘ PROFANITY DETECTED | Words: [${result.detectedWords.join(
+        ", "
+      )}] | Severity: ${ProfanitySeverity[result.severity]}`
+    );
+  } else {
+    console.log(`"${text}" ✓ CLEAN`);
+  }
 }
 
 // Function to display cleaning results
@@ -80,8 +105,15 @@ console.log("\nMixed language content:");
 displayCheck("This sentence has the Hindi word अच्छा which means good.");
 displayCheck("This sentence has the Hindi word चूतिया which is a profanity.");
 
-// 2. Cleaning profanity
-displaySection("2. CLEANING PROFANITY");
+// 2. Advanced detection (NEW)
+displaySection("2. ADVANCED PROFANITY DETECTION");
+displayDetect("This is a clean sentence.");
+displayDetect("What the fuck is this?");
+displayDetect("यह एक चूतिया परीक्षण है।");
+displayDetect("This is a bullshit and chutiya example.");
+
+// 3. Cleaning profanity
+displaySection("3. CLEANING PROFANITY");
 
 // Character-by-character cleaning
 console.log("Default character-by-character cleaning:");
@@ -103,8 +135,8 @@ displayClean("This is a bullshit example.", "character", "#");
 console.log("\nCustom word placeholder:");
 displayClean("This is a bullshit example.", "word", "[CENSORED]");
 
-// 3. Handling punctuation and word boundaries
-displaySection("3. PUNCTUATION & WORD BOUNDARIES");
+// 4. Handling punctuation and word boundaries
+displaySection("4. PUNCTUATION & WORD BOUNDARIES");
 
 console.log("Handling punctuation:");
 displayClean("This is bullshit!", "word");
@@ -115,8 +147,8 @@ displayCheck("He is an associate professor."); // Should not detect 'ass'
 displayCheck("I work as an analyst."); // Should not detect 'anal'
 displayCheck("That was a great assignment!"); // Should not detect 'ass'
 
-// 4. List management
-displaySection("4. LIST MANAGEMENT");
+// 5. List management
+displaySection("5. LIST MANAGEMENT");
 
 // Get current list
 console.log("Current profanity list size:", allProfanity.list().length);
@@ -145,11 +177,10 @@ displayCheck(`This contains ${customWord}.`); // Should be clean again
 // Clean up our custom words to leave the list as we found it
 allProfanity.remove(customWords);
 
-// 5. Placeholder settings
-displaySection("5. PLACEHOLDER SETTINGS");
+// 6. Placeholder settings
+displaySection("6. PLACEHOLDER SETTINGS");
 
 // Change default placeholder for character cleaning
-console.log("Changing default placeholder character:");
 console.log("Default placeholder result:");
 displayClean("This is bullshit.", "character");
 
@@ -161,6 +192,31 @@ displayClean("This is bullshit.", "character");
 console.log('\nResetting placeholder to "*":');
 allProfanity.setPlaceholder("*");
 displayClean("This is bullshit.", "character");
+
+// 7. Language loading and export (NEW)
+displaySection("7. LANGUAGE LOADING & EXPORT");
+
+// Show available languages
+console.log("Available languages:", allProfanity.getAvailableLanguages());
+
+// Show loaded languages
+console.log("Currently loaded languages:", allProfanity.getLoadedLanguages());
+
+// Load a new language (e.g., French)
+console.log("Loading French...");
+allProfanity.loadLanguage("french");
+console.log("Now loaded:", allProfanity.getLoadedLanguages());
+
+// Use exported dictionaries directly
+console.log("First 3 French bad words:", frenchBadWords.slice(0, 3));
+
+// 8. Whitelist demo (NEW)
+displaySection("8. WHITELIST DEMO");
+console.log('Whitelisting "anal" and "ass"...');
+allProfanity.addToWhitelist(["anal", "ass"]);
+displayCheck("He is an associate professor."); // Should never detect 'ass'
+displayCheck("I work as an analyst."); // Should never detect 'anal'
+allProfanity.removeFromWhitelist(["anal", "ass"]);
 
 // Finish the demo
 displaySection("END OF ALLPROFANITY DEMO");
