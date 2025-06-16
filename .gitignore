@@ -46,9 +46,6 @@ benchmark-results/
 .npm/
 .eslintcache
 
-# Example and documentation files
-docs/
-
 # Demo files
 demo/
 src/demo.ts

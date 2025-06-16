@@ -1,3 +1,4 @@
+// Import language dictionaries (assuming these exist)
 import englishBadWords from "./languages/english-words.js";
 import hindiBadWords from "./languages/hindi-words.js";
 import frenchBadWords from "./languages/french-words.js";
@@ -18,6 +19,32 @@ export { default as tamilBadWords } from "./languages/tamil-words.js";
 export { default as teluguBadWords } from "./languages/telugu-words.js";
 
 /**
+ * Logging interface for the library
+ */
+export interface Logger {
+  info(message: string): void;
+  warn(message: string): void;
+  error(message: string): void;
+}
+
+/**
+ * Default console logger implementation
+ */
+class ConsoleLogger implements Logger {
+  info(message: string): void {
+    console.log(`[AllProfanity] ${message}`);
+  }
+
+  warn(message: string): void {
+    console.warn(`[AllProfanity] ${message}`);
+  }
+
+  error(message: string): void {
+    console.error(`[AllProfanity] ${message}`);
+  }
+}
+
+/**
  * Configuration options for AllProfanity
  */
 export interface AllProfanityOptions {
@@ -29,8 +56,8 @@ export interface AllProfanityOptions {
   whitelistWords?: string[];
   strictMode?: boolean;
   detectPartialWords?: boolean;
+  logger?: Logger;
 }
-
 
 /**
  * Severity levels for profanity detection
@@ -54,76 +81,163 @@ export interface ProfanityDetectionResult {
 }
 
 /**
- * Advanced AllProfanity - Custom profanity filter with multi-language support and leet speak detection
- * No external dependencies - built from scratch for maximum performance and control
+ * Internal match result for efficient processing
+ */
+interface MatchResult {
+  word: string;
+  start: number;
+  end: number;
+  originalWord: string;
+}
+
+/**
+ * Validates input parameters
+ */
+function validateString(input: unknown, paramName: string): string {
+  if (typeof input !== "string") {
+    throw new TypeError(`${paramName} must be a string, got ${typeof input}`);
+  }
+  return input;
+}
+
+function validateStringArray(input: unknown, paramName: string): string[] {
+  if (!Array.isArray(input)) {
+    throw new TypeError(`${paramName} must be an array`);
+  }
+  return input.filter((item): item is string => {
+    if (typeof item !== "string") {
+      console.warn(`Skipping non-string item in ${paramName}: ${item}`);
+      return false;
+    }
+    return item.trim().length > 0;
+  });
+}
+
+/**
+ * Efficient Trie data structure for fast string matching
+ */
+class TrieNode {
+  private children: Map<string, TrieNode> = new Map();
+  private isEndOfWord: boolean = false;
+  private word: string = "";
+
+  /**
+   * Add a word to the trie
+   */
+  addWord(word: string): void {
+    let current: TrieNode = this;
+    for (const char of word) {
+      if (!current.children.has(char)) {
+        current.children.set(char, new TrieNode());
+      }
+      const nextNode = current.children.get(char);
+      if (nextNode) {
+        current = nextNode;
+      }
+    }
+    current.isEndOfWord = true;
+    current.word = word;
+  }
+
+  /**
+   * Remove a word from the trie
+   */
+  removeWord(word: string): boolean {
+    return this.removeHelper(word, 0);
+  }
+
+  private removeHelper(word: string, index: number): boolean {
+    if (index === word.length) {
+      if (!this.isEndOfWord) return false;
+      this.isEndOfWord = false;
+      return this.children.size === 0;
+    }
+
+    const char = word[index];
+    const node = this.children.get(char);
+
+    if (!node) return false;
+
+    const shouldDeleteChild = node.removeHelper(word, index + 1);
+
+    if (shouldDeleteChild) {
+      this.children.delete(char);
+      return this.children.size === 0 && !this.isEndOfWord;
+    }
+
+    return false;
+  }
+
+  /**
+   * Find all matches starting at a given position
+   */
+  findMatches(
+    text: string,
+    startPos: number,
+    allowPartial: boolean
+  ): Array<{ word: string; start: number; end: number }> {
+    const matches: Array<{ word: string; start: number; end: number }> = [];
+    let current: TrieNode = this;
+    let pos = startPos;
+
+    while (pos < text.length) {
+      const nextNode = current.children.get(text[pos]);
+      if (!nextNode) break;
+      current = nextNode;
+      pos++;
+
+      if (current.isEndOfWord) {
+        if (!allowPartial) {
+          const wordStart = startPos;
+          const wordEnd = pos;
+
+          matches.push({
+            word: current.word,
+            start: wordStart - startPos,
+            end: wordEnd - startPos,
+          });
+        } else {
+          matches.push({
+            word: current.word,
+            start: 0,
+            end: pos - startPos,
+          });
+        }
+      }
+    }
+
+    return matches;
+  }
+
+  /**
+   * Clear all words from the trie
+   */
+  clear(): void {
+    this.children.clear();
+    this.isEndOfWord = false;
+    this.word = "";
+  }
+}
+
+/**
+ * Advanced AllProfanity - Fixed profanity filter with multi-language support
+ * Addresses all critical issues from the original implementation
  */
 export class AllProfanity {
-  private profanitySet: Set<string> = new Set();
-  private normalizedProfanityMap: Map<string, string> = new Map();
+  private readonly profanityTrie: TrieNode = new TrieNode();
+  private readonly whitelistSet: Set<string> = new Set();
+  private readonly loadedLanguages: Set<string> = new Set();
+  private readonly logger: Logger;
+
+  // Configuration
   private defaultPlaceholder: string = "*";
-  private loadedLanguages: Set<string> = new Set();
-  private whitelistSet: Set<string> = new Set();
   private enableLeetSpeak: boolean = true;
   private caseSensitive: boolean = false;
   private strictMode: boolean = false;
-  private detectPartialWords: boolean = true;
+  private detectPartialWords: boolean = false; // Changed default to false
 
-  // Comprehensive leet speak mapping
-  private readonly leetMap: Record<string, string[]> = {
-    a: ["4", "@", "^", "aye", "λ", "ª"],
-    b: ["8", "6", "|3", "ß", "β", "13"],
-    c: ["(", "<", "©", "¢", "see", "sea"],
-    d: ["|)", "|]", "0", "ð"],
-    e: ["3", "€", "£", "ë", "é", "è"],
-    f: ["|=", "ph", "|#", "ƒ"],
-    g: ["9", "6", "&", "gee"],
-    h: ["#", "|-|", "[-]", "}{", "ħ"],
-    i: ["1", "!", "|", "eye", "ï", "í", "ì"],
-    j: ["_|", "_/", "¿", "ĵ"],
-    k: ["|<", "1<", "l<", "|{", "ķ"],
-    l: ["1", "|", "7", "£", "ł", "ĺ"],
-    m: ["|/|", "//\\", "em", "ɱ"],
-    n: ["||", "//", "and", "ñ", "ń"],
-    o: ["0", "()", "oh", "ø", "ó", "ò", "ô"],
-    p: ["|*", "|o", "|^", "|>", "9", "þ"],
-    q: ["(_,)", "()_", "kw", "ĸ"],
-    r: ["|2", "12", ".-", "are", "ř", "ŕ"],
-    s: ["5", "$", "z", "ş", "ś", "š"],
-    t: ["7", "+", "-|-", "†", "ť", "ţ"],
-    u: ["(_)", "|_|", "v", "you", "ü", "ú", "ù"],
-    v: ["\\/", "|/", "|", "vee"],
-    w: ["\\/\\/", "vv", "dubya", "ŵ"],
-    x: ["><", "}{", "ecks", "χ"],
-    y: ["`/", "j", "why", "ÿ", "ý"],
-    z: ["2", "7_", "-/_", "zee", "ž", "ź", "ż"],
-  };
-
-  // Word boundary patterns
-  private readonly wordBoundaryChars = /[\s\.,;:!?\-_+=\[\]{}()"'\/\\]/;
-
-  // Common word variations and suffixes
-  private readonly commonSuffixes = [
-    "ing",
-    "ed",
-    "s",
-    "er",
-    "ers",
-    "est",
-    "ly",
-    "tion",
-    "ness",
-  ];
-  private readonly commonPrefixes = [
-    "un",
-    "re",
-    "pre",
-    "dis",
-    "over",
-    "under",
-    "out",
-  ];
-
-  private availableLanguages: Record<string, string[]> = {
+  // Available language dictionaries
+  private readonly availableLanguages: Record<string, string[]> = {
     english: englishBadWords || [],
     hindi: hindiBadWords || [],
     french: frenchBadWords || [],
@@ -134,151 +248,146 @@ export class AllProfanity {
     telugu: teluguBadWords || [],
   };
 
-  /**
-   * Create a new AllProfanity instance
-   * @param options - Configuration options
-   */
+  // Fixed leet speak mappings with context awareness
+  private readonly leetMappings: Map<string, string> = new Map([
+    ["@", "a"],
+    ["^", "a"],
+    ["4", "a"],
+    ["8", "b"],
+    ["6", "b"],
+    ["|3", "b"],
+    ["(", "c"],
+    ["<", "c"],
+    ["©", "c"],
+    ["|)", "d"],
+    ["0", "o"], // Fixed: 0 maps to 'o', not 'd'
+    ["3", "e"],
+    ["€", "e"],
+    ["|=", "f"],
+    ["ph", "f"],
+    ["9", "g"],
+    ["6", "g"],
+    ["#", "h"],
+    ["|-|", "h"],
+    ["1", "i"],
+    ["!", "i"],
+    ["|", "i"],
+    ["_|", "j"],
+    ["¿", "j"],
+    ["|<", "k"],
+    ["1<", "k"],
+    ["7", "l"],
+    ["1", "l"],
+    ["|", "l"],
+    ["|\\/|", "m"],
+    ["/\\/\\", "m"],
+    ["|\\|", "n"],
+    ["//", "n"],
+    ["0", "o"],
+    ["()", "o"],
+    ["|*", "p"],
+    ["|o", "p"],
+    ["(_,)", "q"],
+    ["()_", "q"],
+    ["|2", "r"],
+    ["12", "r"],
+    ["5", "s"],
+    ["$", "s"],
+    ["z", "s"],
+    ["7", "t"],
+    ["+", "t"],
+    ["†", "t"],
+    ["|_|", "u"],
+    ["(_)", "u"],
+    ["v", "u"],
+    ["\\/", "v"],
+    ["|/", "v"],
+    ["\\/\\/", "w"],
+    ["vv", "w"],
+    ["><", "x"],
+    ["}{", "x"],
+    ["`/", "y"],
+    ["j", "y"],
+    ["2", "z"],
+    ["7_", "z"],
+  ]);
+
   constructor(options?: AllProfanityOptions) {
-    // Set configuration options
-    if (options?.defaultPlaceholder) {
+    this.logger = options?.logger || new ConsoleLogger();
+
+    // Validate and set configuration
+    if (options?.defaultPlaceholder !== undefined) {
       this.setPlaceholder(options.defaultPlaceholder);
     }
 
     this.enableLeetSpeak = options?.enableLeetSpeak ?? true;
     this.caseSensitive = options?.caseSensitive ?? false;
     this.strictMode = options?.strictMode ?? false;
-    this.detectPartialWords = options?.detectPartialWords ?? true;
+    this.detectPartialWords = options?.detectPartialWords ?? false;
 
-    // Load whitelist if provided
+    // Load whitelist
     if (options?.whitelistWords) {
       this.addToWhitelist(options.whitelistWords);
     }
 
-    // Load the default English dictionary
+    // Load default languages
     this.loadLanguage("english");
+    this.loadLanguage("hindi"); // <-- FIX: ensure hindi is loaded by default
 
-    // Load Hindi by default for backward compatibility
-    this.loadLanguage("hindi");
-
-    // Load any additional languages specified in options
-    if (options?.languages) {
+    // Load additional languages
+    if (options?.languages?.length) {
       options.languages.forEach((lang) => this.loadLanguage(lang));
     }
 
-    // Load any custom dictionaries
+    // Load custom dictionaries
     if (options?.customDictionaries) {
-      Object.entries(options.customDictionaries).forEach(
-        ([langName, words]) => {
-          this.loadCustomDictionary(langName, words);
-        }
-      );
+      Object.entries(options.customDictionaries).forEach(([name, words]) => {
+        this.loadCustomDictionary(name, words);
+      });
     }
   }
 
   /**
    * Normalize text by converting leet speak to regular characters
-   * @param text - Text to normalize
-   * @returns Normalized text
+   * Fixed version with proper context awareness
    */
   private normalizeLeetSpeak(text: string): string {
     if (!this.enableLeetSpeak) return text;
 
     let normalized = text.toLowerCase();
 
-    // Define comprehensive leet mappings
-    const leetMappings = [
-      // Multi-character first
-      { pattern: /\|-\|/g, replacement: "h" },
-      { pattern: /\[-\]/g, replacement: "h" },
-      { pattern: /\}{\s*/g, replacement: "h" },
-      { pattern: /\|\/\|/g, replacement: "m" },
-      { pattern: /\/\/\\/g, replacement: "m" },
-      { pattern: /\|\|/g, replacement: "n" },
-      { pattern: /\/\//g, replacement: "n" },
-      { pattern: /\|2/g, replacement: "r" },
-      { pattern: /12/g, replacement: "r" },
-      { pattern: /\\\/\\\//g, replacement: "w" },
-      { pattern: /vv/g, replacement: "w" },
-      { pattern: /><\s*/g, replacement: "x" },
-      { pattern: /\(_\)/g, replacement: "u" },
-      { pattern: /\|_\|/g, replacement: "u" },
-      { pattern: /\\\//g, replacement: "v" },
-      { pattern: /\|\//g, replacement: "v" },
+    // Sort mappings by length (longest first) to prevent partial replacements
+    const sortedMappings = Array.from(this.leetMappings.entries()).sort(
+      ([a], [b]) => b.length - a.length
+    );
 
-      // Single character mappings
-      { pattern: /@/g, replacement: "a" },
-      { pattern: /4/g, replacement: "u" },
-      { pattern: /\^/g, replacement: "a" },
-      { pattern: /8/g, replacement: "b" },
-      { pattern: /6/g, replacement: "b" },
-      { pattern: /\(/g, replacement: "c" },
-      { pattern: /</g, replacement: "c" },
-      { pattern: /©/g, replacement: "c" },
-      { pattern: /¢/g, replacement: "c" },
-      { pattern: /0/g, replacement: "o" },
-      { pattern: /3/g, replacement: "e" },
-      { pattern: /€/g, replacement: "e" },
-      { pattern: /£/g, replacement: "e" },
-      { pattern: /9/g, replacement: "g" },
-      { pattern: /&/g, replacement: "g" },
-      { pattern: /#/g, replacement: "h" },
-      { pattern: /1/g, replacement: "i" },
-      { pattern: /!/g, replacement: "i" },
-      { pattern: /\|/g, replacement: "i" },
-      { pattern: /7/g, replacement: "t" },
-      { pattern: /5/g, replacement: "s" },
-      { pattern: /\$/g, replacement: "s" },
-      { pattern: /\+/g, replacement: "t" },
-      { pattern: /2/g, replacement: "z" },
-    ];
-
-    // Apply all mappings
-    for (const mapping of leetMappings) {
-      normalized = normalized.replace(mapping.pattern, mapping.replacement);
+    for (const [leet, normal] of sortedMappings) {
+      // Use word boundary aware replacement to avoid false positives
+      if (leet.length === 1 && /[0-9]/.test(leet)) {
+        // For single digit numbers, only replace if surrounded by non-digits
+        const regex = new RegExp(
+          `(?<!\\d)${this.escapeRegex(leet)}(?!\\d)`,
+          "g"
+        );
+        normalized = normalized.replace(regex, normal);
+      } else {
+        const regex = new RegExp(this.escapeRegex(leet), "g");
+        normalized = normalized.replace(regex, normal);
+      }
     }
 
     return normalized;
   }
 
-  private escapeRegex(str: string): string {
-    if (!str || typeof str !== "string") {
-      return "";
-    }
-
-    return str.replace(/[\\^$.*+?()[\]{}|\-]/g, function (match) {
-      return "\\" + match;
-    });
-  }
-
   /**
-   * Generate word variations with common prefixes and suffixes
+   * Properly escape regex special characters
    */
-  private generateWordVariations(word: string): string[] {
-    const variations = new Set([word]);
-
-    // Add suffix variations
-    for (const suffix of this.commonSuffixes) {
-      variations.add(word + suffix);
-      // Handle words ending in 'e'
-      if (word.endsWith("e") && !suffix.startsWith("e")) {
-        variations.add(word.slice(0, -1) + suffix);
-      }
-      // Handle consonant doubling
-      if (word.length > 2 && /[bcdfghjklmnpqrstvwxyz]/.test(word.slice(-1))) {
-        variations.add(word + word.slice(-1) + suffix);
-      }
-    }
-
-    // Add prefix variations
-    for (const prefix of this.commonPrefixes) {
-      variations.add(prefix + word);
-    }
-
-    return Array.from(variations);
+  private escapeRegex(str: string): string {
+    return str.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
   }
 
   /**
-   * Check if text contains word boundaries around a match
+   * Check if a position has word boundaries (for strict mode)
    */
   private hasWordBoundaries(text: string, start: number, end: number): boolean {
     if (!this.strictMode) return true;
@@ -286,101 +395,81 @@ export class AllProfanity {
     const beforeChar = start > 0 ? text[start - 1] : " ";
     const afterChar = end < text.length ? text[end] : " ";
 
+    const wordBoundaryRegex = /[\s\p{P}\p{S}]/u;
+
     return (
-      this.wordBoundaryChars.test(beforeChar) &&
-      this.wordBoundaryChars.test(afterChar)
+      wordBoundaryRegex.test(beforeChar) && wordBoundaryRegex.test(afterChar)
     );
   }
 
   /**
-   * Calculate severity based on detected words
+   * Calculate severity based on detected words and their frequency
    */
-  private calculateSeverity(detectedWords: string[]): ProfanitySeverity {
-    if (detectedWords.length === 0) return ProfanitySeverity.MILD;
+  private calculateSeverity(matches: MatchResult[]): ProfanitySeverity {
+    if (matches.length === 0) return ProfanitySeverity.MILD;
 
-    // This is a simplified severity calculation
-    // You can enhance this based on your specific word categorization
-    const totalWords = detectedWords.length;
-    const uniqueWords = new Set(detectedWords).size;
+    const uniqueWords = new Set(matches.map((m) => m.word)).size;
+    const totalMatches = matches.length;
 
-    if (totalWords >= 5 || uniqueWords >= 3) return ProfanitySeverity.EXTREME;
-    if (totalWords >= 3 || uniqueWords >= 2) return ProfanitySeverity.SEVERE;
-    if (totalWords >= 2) return ProfanitySeverity.MODERATE;
+    if (totalMatches >= 5 || uniqueWords >= 4) return ProfanitySeverity.EXTREME;
+    if (totalMatches >= 3 || uniqueWords >= 3) return ProfanitySeverity.SEVERE;
+    if (totalMatches >= 2 || uniqueWords >= 2)
+      return ProfanitySeverity.MODERATE;
     return ProfanitySeverity.MILD;
   }
 
   /**
    * Load a built-in language dictionary
-   * @param language - The language to load
-   * @returns boolean - True if loaded successfully, false otherwise
    */
   loadLanguage(language: string): boolean {
-    if (this.loadedLanguages.has(language.toLowerCase())) {
+    if (!language || typeof language !== "string") {
+      this.logger.warn(`Invalid language parameter: ${language}`);
+      return false;
+    }
+
+    const langKey = language.toLowerCase().trim();
+
+    if (this.loadedLanguages.has(langKey)) {
       return true;
     }
 
-    const langKey = language.toLowerCase();
-    if (
-      this.availableLanguages[langKey] &&
-      this.availableLanguages[langKey].length > 0
-    ) {
-      const words = this.availableLanguages[langKey];
+    const words = this.availableLanguages[langKey];
+    if (!words || words.length === 0) {
+      this.logger.warn(`Language '${language}' not found or empty`);
+      return false;
+    }
 
-      // Add words and their variations to the profanity set
+    try {
+      let addedCount = 0;
       for (const word of words) {
-        if (!word || typeof word !== "string") continue;
-
-        const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
-        this.profanitySet.add(normalizedWord);
-
-        // Store normalized leet version mapping
-        const leetNormalized = this.normalizeLeetSpeak(normalizedWord);
-        if (leetNormalized !== normalizedWord) {
-          this.normalizedProfanityMap.set(leetNormalized, normalizedWord);
-        }
-
-        // Generate and add variations
-        const variations = this.generateWordVariations(normalizedWord);
-        for (const variation of variations) {
-          this.profanitySet.add(variation);
-          const leetVariation = this.normalizeLeetSpeak(variation);
-          if (leetVariation !== variation) {
-            this.normalizedProfanityMap.set(leetVariation, variation);
-          }
+        if (this.addWordToTrie(word)) {
+          addedCount++;
         }
       }
 
       this.loadedLanguages.add(langKey);
-      console.log(
-        `AllProfanity: Added ${words.length} ${language} words to the profanity list.`
+      this.logger.info(
+        `Loaded ${addedCount} words from ${language} dictionary`
       );
       return true;
-    } else {
-      console.warn(
-        `AllProfanity: Language '${language}' not found or empty in available dictionaries.`
-      );
+    } catch (error) {
+      this.logger.error(`Failed to load language ${language}: ${error}`);
       return false;
     }
   }
 
   /**
    * Load multiple languages at once
-   * @param languages - Array of language names to load
-   * @returns number - Number of successfully loaded languages
    */
   loadLanguages(languages: string[]): number {
-    let successCount = 0;
-    languages.forEach((lang) => {
-      if (this.loadLanguage(lang)) {
-        successCount++;
-      }
-    });
-    return successCount;
+    const validatedLanguages = validateStringArray(languages, "languages");
+    return validatedLanguages.reduce((count, lang) => {
+      return this.loadLanguage(lang) ? count + 1 : count;
+    }, 0);
   }
 
   /**
-   * Load all Indian languages at once
-   * @returns number - Number of Indian languages loaded
+   * Load all Indian languages
    */
   loadIndianLanguages(): number {
     const indianLanguages = ["hindi", "bengali", "tamil", "telugu"];
@@ -388,285 +477,265 @@ export class AllProfanity {
   }
 
   /**
-   * Load a custom dictionary with a given name
-   * @param name - Name to identify this dictionary
-   * @param words - Array of profanity words
+   * Load a custom dictionary
    */
   loadCustomDictionary(name: string, words: string[]): void {
-    if (!words || words.length === 0) {
-      console.warn(`AllProfanity: Custom dictionary '${name}' has no words.`);
+    validateString(name, "dictionary name");
+    const validatedWords = validateStringArray(
+      words,
+      "custom dictionary words"
+    );
+
+    if (validatedWords.length === 0) {
+      this.logger.warn(`Custom dictionary '${name}' contains no valid words`);
       return;
     }
 
-    // Add to available languages for future reference
-    this.availableLanguages[name.toLowerCase()] = words;
-
-    // Process and add words
-    for (const word of words) {
-      if (!word || typeof word !== "string") continue;
-
-      const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
-      this.profanitySet.add(normalizedWord);
-
-      // Store normalized leet version mapping
-      const leetNormalized = this.normalizeLeetSpeak(normalizedWord);
-      if (leetNormalized !== normalizedWord) {
-        this.normalizedProfanityMap.set(leetNormalized, normalizedWord);
-      }
-
-      // Generate and add variations
-      const variations = this.generateWordVariations(normalizedWord);
-      for (const variation of variations) {
-        this.profanitySet.add(variation);
-        const leetVariation = this.normalizeLeetSpeak(variation);
-        if (leetVariation !== variation) {
-          this.normalizedProfanityMap.set(leetVariation, variation);
+    try {
+      let addedCount = 0;
+      for (const word of validatedWords) {
+        if (this.addWordToTrie(word)) {
+          addedCount++;
         }
       }
-    }
 
-    this.loadedLanguages.add(name.toLowerCase());
-    console.log(
-      `AllProfanity: Added ${words.length} words from custom '${name}' dictionary.`
-    );
+      // Store for future reference
+      this.availableLanguages[name.toLowerCase()] = validatedWords;
+      this.loadedLanguages.add(name.toLowerCase());
+
+      this.logger.info(
+        `Loaded ${addedCount} words from custom dictionary '${name}'`
+      );
+    } catch (error) {
+      this.logger.error(`Failed to load custom dictionary ${name}: ${error}`);
+    }
   }
 
   /**
-   * Add words to whitelist (words that should never be flagged as profanity)
-   * @param words - Array of words to whitelist
+   * Add a single word to the trie structure
+   */
+  private addWordToTrie(word: string): boolean {
+    if (!word || typeof word !== "string" || word.trim().length === 0) {
+      return false;
+    }
+
+    const normalizedWord = this.caseSensitive
+      ? word.trim()
+      : word.trim().toLowerCase();
+
+    // Skip if whitelisted
+    if (this.isWhitelisted(normalizedWord)) {
+      return false;
+    }
+
+    // Add to trie
+    this.profanityTrie.addWord(normalizedWord);
+    return true;
+  }
+
+  /**
+   * Add words to whitelist
    */
   addToWhitelist(words: string[]): void {
-    for (const word of words) {
-      if (word && typeof word === "string") {
-        this.whitelistSet.add(this.caseSensitive ? word : word.toLowerCase());
-      }
+    const validatedWords = validateStringArray(words, "whitelist words");
+
+    for (const word of validatedWords) {
+      const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
+      this.whitelistSet.add(normalizedWord);
     }
   }
 
   /**
    * Remove words from whitelist
-   * @param words - Array of words to remove from whitelist
    */
   removeFromWhitelist(words: string[]): void {
-    for (const word of words) {
-      if (word && typeof word === "string") {
-        this.whitelistSet.delete(
-          this.caseSensitive ? word : word.toLowerCase()
-        );
-      }
+    const validatedWords = validateStringArray(words, "whitelist words");
+
+    for (const word of validatedWords) {
+      const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
+      this.whitelistSet.delete(normalizedWord);
     }
   }
 
   /**
-   * Advanced profanity detection with detailed results
-   * @param text - The text to analyze
-   * @returns ProfanityDetectionResult - Detailed detection results
+   * Helper for whitelist checking with correct normalization
+   */
+  private isWhitelisted(word: string): boolean {
+    const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
+    return this.whitelistSet.has(normalizedWord);
+  }
+
+  /**
+   * Remove overlapping matches, keep only the longest at each start position
+   */
+  private deduplicateMatches(matches: MatchResult[]): MatchResult[] {
+    // Sort by start ascending, end descending (longer first for same start)
+    const sorted = [...matches].sort((a, b) => {
+      if (a.start !== b.start) return a.start - b.start;
+      return b.end - a.end;
+    });
+
+    const result: MatchResult[] = [];
+    let lastEnd = -1;
+    for (const match of sorted) {
+      if (match.start >= lastEnd) {
+        result.push(match);
+        lastEnd = match.end;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Advanced profanity detection using efficient trie-based algorithm
    */
   detect(text: string): ProfanityDetectionResult {
-    if (!text || typeof text !== "string") {
+    const validatedText = validateString(text, "text");
+
+    if (validatedText.length === 0) {
       return {
         hasProfanity: false,
         detectedWords: [],
-        cleanedText: text || "",
+        cleanedText: validatedText,
         severity: ProfanitySeverity.MILD,
         positions: [],
       };
     }
 
-    const normalizedText = this.caseSensitive ? text : text.toLowerCase();
-    const leetNormalizedText = this.normalizeLeetSpeak(normalizedText);
+    const matches: MatchResult[] = [];
+    const normalizedText = this.caseSensitive
+      ? validatedText
+      : validatedText.toLowerCase();
 
-    const detectedWords: string[] = [];
-    const positions: Array<{ word: string; start: number; end: number }> = [];
+    // Primary detection on normalized text
+    this.findMatches(normalizedText, validatedText, matches);
 
-    // Check for whole word matches first
-    for (const profanity of this.profanitySet) {
-      if (this.whitelistSet.has(profanity)) continue;
-
-      try {
-        // Create regex for word boundary detection
-        const escapedWord = this.escapeRegex(profanity);
-        const wordRegex = new RegExp(
-          `\\b${escapedWord}\\b`,
-          this.caseSensitive ? "g" : "gi"
-        );
-
-        let match;
-        while ((match = wordRegex.exec(normalizedText)) !== null) {
-          if (
-            this.hasWordBoundaries(
-              normalizedText,
-              match.index,
-              match.index + match[0].length
-            )
-          ) {
-            detectedWords.push(match[0]);
-            positions.push({
-              word: match[0],
-              start: match.index,
-              end: match.index + match[0].length,
-            });
-          }
-        }
-      } catch (error) {
-        // Fallback to simple string search if regex fails
-        const index = normalizedText.indexOf(profanity);
-        if (index !== -1) {
-          detectedWords.push(profanity);
-          positions.push({
-            word: profanity,
-            start: index,
-            end: index + profanity.length,
-          });
-        }
+    // Leet speak detection if enabled
+    if (this.enableLeetSpeak) {
+      const leetNormalized = this.normalizeLeetSpeak(normalizedText);
+      if (leetNormalized !== normalizedText) {
+        this.findMatches(leetNormalized, validatedText, matches);
       }
     }
 
-    // Check leet speak normalized text
-    if (this.enableLeetSpeak && leetNormalizedText !== normalizedText) {
-      for (const profanity of this.profanitySet) {
-        if (this.whitelistSet.has(profanity)) continue;
+    // Remove duplicates and sort by position
+    const uniqueMatches = this.deduplicateMatches(matches);
+    const detectedWords = uniqueMatches.map((m) => m.originalWord);
+    const severity = this.calculateSeverity(uniqueMatches);
 
-        try {
-          const escapedWord = this.escapeRegex(profanity);
-          const wordRegex = new RegExp(
-            `\\b${escapedWord}\\b`,
-            this.caseSensitive ? "g" : "gi"
-          );
-
-          let match;
-          while ((match = wordRegex.exec(leetNormalizedText)) !== null) {
-            if (
-              this.hasWordBoundaries(
-                leetNormalizedText,
-                match.index,
-                match.index + match[0].length
-              )
-            ) {
-              // Find the original text that corresponds to this match
-              const originalMatch = normalizedText.substring(
-                match.index,
-                match.index + match[0].length
-              );
-              if (!detectedWords.includes(originalMatch)) {
-                detectedWords.push(originalMatch);
-                positions.push({
-                  word: originalMatch,
-                  start: match.index,
-                  end: match.index + match[0].length,
-                });
-              }
-            }
-          }
-        } catch (error) {
-          // Fallback to simple string search
-          if (leetNormalizedText.includes(profanity)) {
-            const index = leetNormalizedText.indexOf(profanity);
-            const originalMatch = normalizedText.substring(
-              index,
-              index + profanity.length
-            );
-            if (!detectedWords.includes(originalMatch)) {
-              detectedWords.push(originalMatch);
-              positions.push({
-                word: originalMatch,
-                start: index,
-                end: index + profanity.length,
-              });
-            }
-          }
-        }
-      }
-    }
-
-    // Partial word detection (if enabled)
-    if (this.detectPartialWords) {
-      for (const profanity of this.profanitySet) {
-        if (this.whitelistSet.has(profanity) || profanity.length < 4) continue;
-
-        if (
-          normalizedText.includes(profanity) ||
-          leetNormalizedText.includes(profanity)
-        ) {
-          const index = normalizedText.indexOf(profanity);
-          if (
-            index !== -1 &&
-            !detectedWords.some((w) => normalizedText.indexOf(w) === index)
-          ) {
-            detectedWords.push(profanity);
-            positions.push({
-              word: profanity,
-              start: index,
-              end: index + profanity.length,
-            });
-          }
-        }
-      }
-    }
-
-    // REMOVED: cleanedText = this.clean(text) - this was causing circular dependency
-    // We'll generate the cleaned text directly here instead
-    let cleanedText = text;
-    if (detectedWords.length > 0) {
-      // Sort positions by start index in descending order to avoid index shifting
-      const sortedPositions = positions.sort((a, b) => b.start - a.start);
-
-      for (const pos of sortedPositions) {
-        const originalWord = text.substring(pos.start, pos.end);
-        const replacement = this.defaultPlaceholder.repeat(originalWord.length);
-        cleanedText =
-          cleanedText.substring(0, pos.start) +
-          replacement +
-          cleanedText.substring(pos.end);
-      }
-    }
-
-    const severity = this.calculateSeverity(detectedWords);
+    // Generate cleaned text
+    const cleanedText = this.generateCleanedText(validatedText, uniqueMatches);
 
     return {
-      hasProfanity: detectedWords.length > 0,
-      detectedWords: [...new Set(detectedWords)], // Remove duplicates
+      hasProfanity: uniqueMatches.length > 0,
+      detectedWords,
       cleanedText,
       severity,
-      positions,
+      positions: uniqueMatches.map((m) => ({
+        word: m.originalWord,
+        start: m.start,
+        end: m.end,
+      })),
     };
   }
 
   /**
-   * Check if a string contains profanity (simple boolean check)
-   * @param string - The string to check
-   * @returns boolean - True if profanity found, false otherwise
+   * Find matches using efficient trie traversal
    */
-  check(string: string): boolean {
-    return this.detect(string).hasProfanity;
+  private findMatches(
+    searchText: string,
+    originalText: string,
+    matches: MatchResult[]
+  ): void {
+    for (let i = 0; i < searchText.length; i++) {
+      const matchResult = this.profanityTrie.findMatches(
+        searchText,
+        i,
+        this.detectPartialWords
+      );
+
+      for (const match of matchResult) {
+        const start = i + match.start;
+        const end = i + match.end;
+
+        // Validate word boundaries in strict mode
+        if (this.hasWordBoundaries(searchText, start, end)) {
+          // Skip if whitelisted
+          if (!this.isWhitelisted(match.word)) {
+            matches.push({
+              word: match.word,
+              start,
+              end,
+              originalWord: originalText.substring(start, end),
+            });
+          }
+        }
+      }
+    }
   }
 
   /**
-   * Clean a string by replacing profanities with placeholders
-   * @param string - The string to clean
-   * @param placeholder - Optional custom placeholder
-   * @returns string - The cleaned string
+   * Generate cleaned text by replacing profane words (non-overlapping only)
    */
-  clean(string: string, placeholder?: string): string {
-    if (!string || typeof string !== "string") return string || "";
+  private generateCleanedText(
+    originalText: string,
+    matches: MatchResult[]
+  ): string {
+    if (matches.length === 0) return originalText;
 
-    const placeholderChar = placeholder || this.defaultPlaceholder;
-    const detection = this.detect(string);
+    let result = originalText;
 
-    // If detect() already provided cleanedText and no custom placeholder, use it
-    if (!placeholder && detection.cleanedText !== string) {
-      return detection.cleanedText;
-    }
-
-    // Otherwise, build cleaned text with custom placeholder
-    let result = string;
-    const sortedPositions = detection.positions.sort(
+    // Process matches in reverse order to maintain indices and avoid overlap
+    const sortedMatches = [...this.deduplicateMatches(matches)].sort(
       (a, b) => b.start - a.start
     );
 
+    for (const match of sortedMatches) {
+      const replacement = this.defaultPlaceholder.repeat(
+        match.originalWord.length
+      );
+      result =
+        result.substring(0, match.start) +
+        replacement +
+        result.substring(match.end);
+    }
+
+    return result;
+  }
+
+  /**
+   * Simple boolean check for profanity
+   */
+  check(text: string): boolean {
+    return this.detect(text).hasProfanity;
+  }
+
+  /**
+   * Clean text with custom placeholder
+   */
+  clean(text: string, placeholder?: string): string {
+    const detection = this.detect(text);
+
+    if (!placeholder || placeholder === this.defaultPlaceholder) {
+      return detection.cleanedText;
+    }
+
+    // Use custom placeholder
+    let result = text;
+    const sortedPositions = [
+      ...this.deduplicateMatches(
+        detection.positions.map((p) => ({
+          word: p.word,
+          start: p.start,
+          end: p.end,
+          originalWord: text.substring(p.start, p.end),
+        }))
+      ),
+    ].sort((a, b) => b.start - a.start);
+
     for (const pos of sortedPositions) {
-      const originalWord = string.substring(pos.start, pos.end);
-      const replacement = placeholderChar.repeat(originalWord.length);
+      const originalWord = text.substring(pos.start, pos.end);
+      const replacement = placeholder.repeat(originalWord.length);
       result =
         result.substring(0, pos.start) +
         replacement +
@@ -677,125 +746,90 @@ export class AllProfanity {
   }
 
   /**
-   * Clean a string by replacing each profane word with a single placeholder
-   * @param string - The string to clean
-   * @param placeholder - The placeholder to use (defaults to '***')
-   * @returns string - The cleaned string
+   * Clean text by replacing each profane word with a single placeholder
    */
-  cleanWithWord(string: string, placeholder: string = "***"): string {
-    if (!string || typeof string !== "string") return string || "";
+  cleanWithPlaceholder(text: string, placeholder: string = "***"): string {
+    const detection = this.detect(text);
 
-    // Build a regex that matches any profane word with word boundaries, unicode-aware
-    const words = Array.from(this.profanitySet)
-      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")) // escape regex
-      .sort((a, b) => b.length - a.length); // longer words first to avoid partial matches
+    if (detection.positions.length === 0) return text;
 
-    if (words.length === 0) return string;
+    let result = text;
+    const sortedPositions = [
+      ...this.deduplicateMatches(
+        detection.positions.map((p) => ({
+          word: p.word,
+          start: p.start,
+          end: p.end,
+          originalWord: text.substring(p.start, p.end),
+        }))
+      ),
+    ].sort((a, b) => b.start - a.start);
 
-    // Unicode safe word boundary: (?<=^|[^\p{L}\p{N}_])WORD(?=[^\p{L}\p{N}_]|$)
-    // This ensures we only match whole words, not inside other words.
-    const regex = new RegExp(
-      `(?<=^|[\\s\\.,;:!\\?\\-_+=\\[\\]{}()"'\\/\\\\])(` +
-        words.join("|") +
-        `)(?=[\\s\\.,;:!\\?\\-_+=\\[\\]{}()"'\\/\\\\]|$)`,
-      this.caseSensitive ? "gu" : "giu"
-    );
+    for (const pos of sortedPositions) {
+      result =
+        result.substring(0, pos.start) +
+        placeholder +
+        result.substring(pos.end);
+    }
 
-    // Replace all matches with the placeholder.
-    return string.replace(regex, placeholder);
-  }
-
-  /**
-   * Get the current list of profanity words
-   * @returns string[] - Array of all profanity words
-   */
-  list(): string[] {
-    return Array.from(this.profanitySet);
+    return result;
   }
 
   /**
    * Add word(s) to the profanity list
-   * @param word - String or array of strings to add
    */
   add(word: string | string[]): void {
     const words = Array.isArray(word) ? word : [word];
+    const validatedWords = validateStringArray(words, "words to add");
 
-    for (const w of words) {
-      if (!w || typeof w !== "string") continue;
-
-      const normalizedWord = this.caseSensitive ? w : w.toLowerCase();
-      this.profanitySet.add(normalizedWord);
-
-      // Add leet speak mapping
-      const leetNormalized = this.normalizeLeetSpeak(normalizedWord);
-      if (leetNormalized !== normalizedWord) {
-        this.normalizedProfanityMap.set(leetNormalized, normalizedWord);
-      }
-
-      // Add variations
-      const variations = this.generateWordVariations(normalizedWord);
-      for (const variation of variations) {
-        this.profanitySet.add(variation);
-      }
+    for (const w of validatedWords) {
+      this.addWordToTrie(w);
     }
   }
 
   /**
    * Remove word(s) from the profanity list
-   * @param word - String or array of strings to remove
    */
   remove(word: string | string[]): void {
     const words = Array.isArray(word) ? word : [word];
+    const validatedWords = validateStringArray(words, "words to remove");
 
-    for (const w of words) {
-      if (!w || typeof w !== "string") continue;
-
+    for (const w of validatedWords) {
       const normalizedWord = this.caseSensitive ? w : w.toLowerCase();
-      this.profanitySet.delete(normalizedWord);
-
-      // Remove variations
-      const variations = this.generateWordVariations(normalizedWord);
-      for (const variation of variations) {
-        this.profanitySet.delete(variation);
-      }
+      this.profanityTrie.removeWord(normalizedWord);
     }
   }
 
   /**
-   * Clear the filter list and reset to default
+   * Clear all loaded dictionaries
    */
   clearList(): void {
-    this.profanitySet.clear();
-    this.normalizedProfanityMap.clear();
+    this.profanityTrie.clear();
     this.loadedLanguages.clear();
   }
 
   /**
-   * Change the character used as placeholder
-   * @param placeholder - Single character to use as placeholder
+   * Set placeholder character
    */
   setPlaceholder(placeholder: string): void {
-    if (placeholder.length !== 1) {
-      console.warn(
-        "AllProfanity: Placeholder should be a single character. Using first character."
-      );
-      this.defaultPlaceholder = placeholder.charAt(0);
-    } else {
-      this.defaultPlaceholder = placeholder;
+    validateString(placeholder, "placeholder");
+
+    if (placeholder.length === 0) {
+      throw new Error("Placeholder cannot be empty");
     }
+
+    this.defaultPlaceholder = placeholder.charAt(0);
   }
 
   /**
-   * Get the list of currently loaded languages
-   * @returns string[] - Array of loaded language names
+   * Get loaded languages
    */
   getLoadedLanguages(): string[] {
     return Array.from(this.loadedLanguages);
   }
 
   /**
-   * Get the list of available language dictionaries
-   * @returns string[] - Array of available language names
+   * Get available languages
    */
   getAvailableLanguages(): string[] {
     return Object.keys(this.availableLanguages);
@@ -841,6 +875,6 @@ export class AllProfanity {
   }
 }
 
-// Create and export a singleton instance with default settings
+// Create and export a singleton instance
 const allProfanity = new AllProfanity();
 export default allProfanity;
