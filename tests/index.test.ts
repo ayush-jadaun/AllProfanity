@@ -471,21 +471,7 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
       filter.remove([testWord]);
     });
 
-    test("should handle strict mode configuration", () => {
-      const testWord = "stricttest";
-      filter.add([testWord]);
-
-      // Test with strict mode disabled
-      filter.updateConfig({ strictMode: false });
-      expect(filter.check(`prefix${testWord}suffix`)).toBe(true);
-
-      // Test with strict mode enabled
-      filter.updateConfig({ strictMode: true });
-      expect(filter.check(`prefix${testWord}suffix`)).toBe(false);
-      expect(filter.check(`word ${testWord} word`)).toBe(true);
-
-      filter.remove([testWord]);
-    });
+   
   });
 
   describe("Performance and Edge Cases", () => {

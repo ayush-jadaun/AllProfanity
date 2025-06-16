@@ -13,26 +13,28 @@ import allProfanity, {
 } from "../src/index";
 
 /**
- * AllProfanity Library - Example Usage
+ * AllProfanity Library - Example Usage (2025 Edition)
  *
- * This example demonstrates all the main features of the AllProfanity library
- * including profanity detection, advanced detection, cleaning, and list management across multiple languages.
+ * This example demonstrates the core features of the refactored AllProfanity library,
+ * including O(n) TRIE-based profanity detection, advanced leet-speak support,
+ * multi-language management, accurate cleaning, dynamic word management,
+ * and robust whitelist/placeholder configuration.
  */
 
-// Function to display section headers nicely
+// Display section headers
 function displaySection(title: string): void {
   console.log("\n" + "=".repeat(50));
   console.log(`  ${title}`);
   console.log("=".repeat(50) + "\n");
 }
 
-// Function to display check results
+// Display check results (simple boolean)
 function displayCheck(text: string): void {
   const result = allProfanity.check(text);
   console.log(`"${text}" ${result ? "✘ CONTAINS PROFANITY" : "✓ CLEAN"}`);
 }
 
-// Function to display advanced detection results
+// Display advanced detection results
 function displayDetect(text: string): void {
   const result: ProfanityDetectionResult = allProfanity.detect(text);
   if (result.hasProfanity) {
@@ -41,12 +43,19 @@ function displayDetect(text: string): void {
         ", "
       )}] | Severity: ${ProfanitySeverity[result.severity]}`
     );
+    if (result.positions.length) {
+      result.positions.forEach((p, idx) =>
+        console.log(
+          `  Match #${idx + 1}: "${p.word}" (pos ${p.start}-${p.end})`
+        )
+      );
+    }
   } else {
     console.log(`"${text}" ✓ CLEAN`);
   }
 }
 
-// Function to display cleaning results
+// Display cleaning results
 function displayClean(
   text: string,
   method: "character" | "word" = "character",
@@ -60,7 +69,7 @@ function displayClean(
       `Character cleaning${placeholder ? ` (with '${placeholder}')` : ""}:`
     );
   } else {
-    cleaned = allProfanity.cleanWithWord(text, placeholder);
+    cleaned = allProfanity.cleanWithPlaceholder(text, placeholder);
     console.log(
       `Word cleaning${placeholder ? ` (with '${placeholder}')` : ""}:`
     );
@@ -73,7 +82,7 @@ function displayClean(
 // Start the demo
 displaySection("WELCOME TO ALLPROFANITY DEMO");
 console.log(
-  "This example demonstrates the features of the AllProfanity library\n"
+  "This example demonstrates the features of the AllProfanity library (2025 Edition)\n"
 );
 
 // 1. Basic profanity checking
@@ -87,18 +96,18 @@ displayCheck("What the fuck is this?");
 
 // Hindi examples (Devanagari script)
 console.log("\nHindi content (Devanagari script):");
-displayCheck("यह एक अच्छा वाक्य है।"); // This is a good sentence.
-displayCheck("यह एक चूतिया वाक्य है।"); // This contains profanity
+displayCheck("यह एक अच्छा वाक्य है।"); // Clean
+displayCheck("यह एक चूतिया वाक्य है।"); // Profanity
 
 // Hindi examples (Roman script)
 console.log("\nHindi content (Roman script):");
-displayCheck("Yeh ek accha vakya hai."); // This is a good sentence.
-displayCheck("Yeh ek chutiya vakya hai."); // This contains profanity
+displayCheck("Yeh ek accha vakya hai."); // Clean
+displayCheck("Yeh ek chutiya vakya hai."); // Profanity
 
 // Hinglish examples
 console.log("\nHinglish content:");
-displayCheck("Kya scene hai bhai?"); // What's up brother? (clean)
-displayCheck("BC kya kar raha hai?"); // Using a common Hindi profanity abbreviation
+displayCheck("Kya scene hai bhai?"); // Clean
+displayCheck("BC kya kar raha hai?"); // Profanity abbreviation
 
 // Mixed language content
 console.log("\nMixed language content:");
@@ -147,13 +156,6 @@ displayCheck("He is an associate professor."); // Should not detect 'ass'
 displayCheck("I work as an analyst."); // Should not detect 'anal'
 displayCheck("That was a great assignment!"); // Should not detect 'ass'
 
-// 5. List management
-displaySection("5. LIST MANAGEMENT");
-
-// Get current list
-console.log("Current profanity list size:", allProfanity.list().length);
-console.log("First 5 words in the list:", allProfanity.list().slice(0, 5));
-
 // Add custom words
 console.log("\nAdding custom words to the list:");
 const customWord = "badword123";
@@ -166,7 +168,7 @@ displayCheck(`This contains ${customWord}.`); // Should detect profanity now
 console.log("\nAdding multiple custom words at once:");
 const customWords = ["customBadWord1", "customBadWord2"];
 allProfanity.add(customWords);
-displayCheck(`Testing ${customWords[0]} and ${customWords[1]}.`); // Should detect profanity
+displayCheck(`Testing ${customWords[0]} and ${customWords[1]}.`); // Should detect
 
 // Remove words
 console.log("\nRemoving words from the list:");
@@ -193,7 +195,7 @@ console.log('\nResetting placeholder to "*":');
 allProfanity.setPlaceholder("*");
 displayClean("This is bullshit.", "character");
 
-// 7. Language loading and export (NEW)
+// 7. Language loading and export
 displaySection("7. LANGUAGE LOADING & EXPORT");
 
 // Show available languages
@@ -210,13 +212,26 @@ console.log("Now loaded:", allProfanity.getLoadedLanguages());
 // Use exported dictionaries directly
 console.log("First 3 French bad words:", frenchBadWords.slice(0, 3));
 
-// 8. Whitelist demo (NEW)
+// 8. Whitelist demo
 displaySection("8. WHITELIST DEMO");
 console.log('Whitelisting "anal" and "ass"...');
 allProfanity.addToWhitelist(["anal", "ass"]);
 displayCheck("He is an associate professor."); // Should never detect 'ass'
 displayCheck("I work as an analyst."); // Should never detect 'anal'
 allProfanity.removeFromWhitelist(["anal", "ass"]);
+
+// 9. Leet-speak detection (NEW)
+displaySection("9. LEET-SPEAK DETECTION");
+console.log('Checking "f#ck" and "a55hole":');
+displayDetect("You are a f#cking a55hole!"); // Should detect leet-speak variants
+
+// 10. Multi-language and Indian language loading (NEW)
+displaySection("10. MULTI-LANGUAGE SUPPORT");
+console.log("Loading Indian languages in bulk...");
+allProfanity.loadIndianLanguages();
+console.log("Loaded languages:", allProfanity.getLoadedLanguages());
+displayCheck("This is a Tamil profanity: புண்டை");
+displayCheck("This is a Telugu profanity: బూతులు");
 
 // Finish the demo
 displaySection("END OF ALLPROFANITY DEMO");

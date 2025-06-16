@@ -1,24 +1,28 @@
 # AllProfanity
 
-A comprehensive multi-language profanity filter for JavaScript/TypeScript applications with built-in support for English, Hindi, and Hinglish content.
+A blazing-fast, multi-language, enterprise-grade profanity filter for JavaScript/TypeScript with advanced leet-speak normalization, Unicode support, and a robust, modern API.
 
 [![npm version](https://img.shields.io/npm/v/allprofanity.svg)](https://www.npmjs.com/package/allprofanity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+---
+
 ## Features
 
-- **Multi-language Support**: Pre-loaded with English profanities (from leo-profanity) and an extensive Hindi/Hinglish dictionary
-- **Multiple Scripts**: Detects profanity in both Latin/Roman and Devanagari scripts
-- **Case Insensitive**: Works regardless of letter case
-- **Flexible Cleaning Options**:
-  - Character-level replacement (each character of a profane word becomes a placeholder)
-  - Word-level replacement (entire profane word becomes a single placeholder)
-- **Customizable**:
-  - Dynamically add/remove words from the filter
-  - Set custom placeholder characters or strings
-- **Zero Dependencies**: Only depends on leo-profanity as the base filter
-- **TypeScript Support**: Full TypeScript type definitions included
-- **Extensible**: Designed with multi-language support in mind, making it easy to add more languages in the future
+- **Ultra-Fast O(n) Detection:** TRIE-based, single-pass algorithm for massive performance gains over regex/set-based filters.
+- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu. Load multiple at once.
+- **Multiple Scripts:** Detects profanity in Latin/Roman (Hinglish) and native scripts (e.g., Devanagari, Tamil, Telugu).
+- **Advanced Leet-Speak Normalization:** Detects obfuscated profanities (`f#ck`, `a55hole`, etc.) with context-aware mapping.
+- **Unicode & Punctuation Robustness:** Handles word boundaries and mixed language content with near-zero false positives.
+- **Flexible Cleaning:** Replace matches character-by-character or as whole words, with configurable placeholders.
+- **Custom Dictionaries:** Add/remove words or entire lists at runtime, including your own language packs.
+- **Whitelisting:** Exclude safe words or false positives from detection.
+- **Severity Levels:** Assess how offensive a string is (`MILD`, `MODERATE`, `SEVERE`, `EXTREME`).
+- **No Dictionary Exposure:** For security, the full list of loaded profanities is never exposed.
+- **TypeScript Support:** Typed, documented API and result objects.
+- **Zero 3rd-Party Dependencies:** Only internal code and data.
+
+---
 
 ## Installation
 
@@ -26,272 +30,379 @@ A comprehensive multi-language profanity filter for JavaScript/TypeScript applic
 npm install allprofanity
 # or
 yarn add allprofanity
-# or
-pnpm add allprofanity
 ```
 
-## Basic Usage
+---
 
-```javascript
+## Quick Start
+
+```typescript
 import profanity from 'allprofanity';
 
-// Check if a string contains profanity
+// Simple check
+profanity.check('This is a clean sentence.');        // false
+profanity.check('What the f#ck is this?');           // true (leet-speak detected)
+profanity.check('यह एक चूतिया परीक्षण है।');           // true (Hindi)
+profanity.check('Ye ek chutiya test hai.');          // true (Hinglish Roman script)
+```
+
+---
+
+## API Reference & Examples
+
+### `check(text: string): boolean`
+
+Returns `true` if the text contains any profanity.
+
+```typescript
 profanity.check('This is a clean sentence.');  // false
-profanity.check('This is a fucking test.');    // true
-profanity.check('यह एक चूतिया परीक्षण है।');    // true (Hindi example)
-profanity.check('Ye ek chutiya test hai.');    // true (Hinglish example)
-
-// Clean profanity (character by character replacement)
-profanity.clean('This is a fucking test.');  
-// => "This is a ****ing test."
-
-// Clean profanity (whole word replacement)
-profanity.cleanWithWord('This is a fucking test.');  
-// => "This is a *** test."
+profanity.check('This is a bullshit sentence.'); // true
+profanity.check('What the f#ck is this?'); // true (leet-speak)
+profanity.check('यह एक चूतिया परीक्षण है।'); // true (Hindi)
 ```
 
-## API Reference
+---
 
-### `check(string: string): boolean`
+### `detect(text: string): ProfanityDetectionResult`
 
-Checks if a string contains any profanity from the loaded dictionaries.
+Returns a detailed result:
 
-```javascript
-profanity.check('This contains bullshit.');  // true
-profanity.check('This is clean.');           // false
+- `hasProfanity: boolean`
+- `detectedWords: string[]` (actual matched words)
+- `cleanedText: string` (character-masked)
+- `severity: ProfanitySeverity` (`MILD`, `MODERATE`, `SEVERE`, `EXTREME`)
+- `positions: Array<{ word: string, start: number, end: number }>`
+
+```typescript
+const result = profanity.detect('This is fucking bullshit and chutiya.');
+console.log(result.hasProfanity); // true
+console.log(result.detectedWords); // ['fucking', 'bullshit', 'chutiya']
+console.log(result.severity); // 3 (SEVERE)
+console.log(result.cleanedText); // "This is ******* ******** and ******."
+console.log(result.positions); // e.g. [{word: 'fucking', start: 8, end: 15}, ...]
 ```
 
-### `clean(string: string, placeholder?: string): string`
+---
 
-Cleans a string by replacing each character of profane words with a placeholder character.
+### `clean(text: string, placeholder?: string): string`
 
-```javascript
-// Default placeholder is "*"
-profanity.clean('This contains bullshit.');
-// => "This contains ********."
+Replace each character of profane words with a placeholder (default: `*`).
 
-// Custom placeholder character
-profanity.clean('This contains bullshit.', '#');
-// => "This contains ########."
+```typescript
+profanity.clean('This contains bullshit.'); // "This contains ********."
+profanity.clean('This contains bullshit.', '#'); // "This contains ########."
+profanity.clean('यह एक चूतिया परीक्षण है।'); // e.g. "यह एक ***** परीक्षण है।"
 ```
 
-### `cleanWithWord(string: string, placeholder?: string): string`
+---
 
-Cleans a string by replacing entire profane words with a single placeholder string.
+### `cleanWithPlaceholder(text: string, placeholder?: string): string`
 
-```javascript
-// Default placeholder is "***"
-profanity.cleanWithWord('This contains bullshit.');
-// => "This contains ***."
+Replace each profane word with a single placeholder (default: `***`).  
+(If the placeholder is omitted, uses `***`.)
 
-// Custom placeholder string
-profanity.cleanWithWord('This contains bullshit.', '[CENSORED]');
-// => "This contains [CENSORED]."
+```typescript
+profanity.cleanWithPlaceholder('This contains bullshit.'); // "This contains ***."
+profanity.cleanWithPlaceholder('This contains bullshit.', '[CENSORED]'); // "This contains [CENSORED]."
+profanity.cleanWithPlaceholder('यह एक चूतिया परीक्षण है।', '####'); // e.g. "यह एक #### परीक्षण है।"
 ```
 
-### `list(): string[]`
-
-Returns an array of all the profanity words currently in the filter.
-
-```javascript
-const words = profanity.list();
-console.log(words);  // ["fuck", "bullshit", "chutiya", ...]
-```
+---
 
 ### `add(word: string | string[]): void`
 
-Adds one or more words to the profanity filter.
+Add a word or an array of words to the profanity filter.
 
-```javascript
-// Add a single word
-profanity.add('badword');
+```typescript
+profanity.add('badword123');
+profanity.check('This is badword123.'); // true
 
-// Add multiple words
-profanity.add(['badword1', 'badword2', 'बुराशब्द']);
+profanity.add(['mierda', 'puta']);
+profanity.check('Esto es mierda.'); // true (Spanish)
+profanity.check('Qué puta situación.'); // true
 ```
+
+---
 
 ### `remove(word: string | string[]): void`
 
-Removes one or more words from the profanity filter.
+Remove a word or an array of words from the profanity filter.
 
-```javascript
-// Remove a single word
+```typescript
 profanity.remove('bullshit');
+profanity.check('This is bullshit.'); // false
 
-// Remove multiple words
-profanity.remove(['fuck', 'chutiya']);
+profanity.remove(['mierda', 'puta']);
+profanity.check('Esto es mierda.'); // false
 ```
 
-### `clearList(): void`
+---
 
-Removes all words from the profanity filter, resetting it to an empty list.
+### `addToWhitelist(words: string[]): void`
 
-```javascript
-profanity.clearList();
+Whitelist words so they are never flagged as profane.
+
+```typescript
+profanity.addToWhitelist(['anal', 'ass']);
+profanity.check('He is an associate professor.'); // false
+profanity.check('I work as an analyst.'); // false
+// Remove from whitelist to restore detection
+profanity.removeFromWhitelist(['anal', 'ass']);
 ```
+
+---
+
+### `removeFromWhitelist(words: string[]): void`
+
+Remove words from the whitelist so they can be detected again.
+
+```typescript
+profanity.removeFromWhitelist(['anal']);
+```
+
+---
 
 ### `setPlaceholder(placeholder: string): void`
 
-Sets the default placeholder character for the `clean` method.
+Set the default placeholder character for `clean()`.
 
-```javascript
-// Set "#" as the default placeholder character
+```typescript
 profanity.setPlaceholder('#');
+profanity.clean('This is bullshit.'); // "This is ########."
+profanity.setPlaceholder('*'); // Reset to default
 ```
 
-## Word Boundary Detection
+---
 
-The library is designed to handle word boundaries correctly, reducing false positives:
+### `updateConfig(options: Partial<AllProfanityOptions>): void`
 
-```javascript
-profanity.check('He is an associate professor.');  // false, even though 'ass' is a profane word
-profanity.check('I'm an analyst at this company.'); // false, even though 'anal' is a profane word
-profanity.check('This is ass and that's bad.');     // true
+Change configuration at runtime.  
+Options include: `enableLeetSpeak`, `caseSensitive`, `strictMode`, `detectPartialWords`, `defaultPlaceholder`, `languages`, `whitelistWords`.
+
+```typescript
+profanity.updateConfig({ caseSensitive: true, enableLeetSpeak: false });
+profanity.check('FUCK'); // false (if caseSensitive)
+profanity.updateConfig({ caseSensitive: false, enableLeetSpeak: true });
+profanity.check('f#ck'); // true
 ```
+
+---
+
+### `loadLanguage(language: string): boolean`
+
+Load a built-in language.
+
+```typescript
+profanity.loadLanguage('french');
+profanity.check('Ce mot est merde.'); // true
+```
+
+---
+
+### `loadLanguages(languages: string[]): number`
+
+Load multiple built-in languages at once.
+
+```typescript
+profanity.loadLanguages(['english', 'french', 'german']);
+profanity.check('Das ist scheiße.'); // true (German)
+```
+
+---
+
+### `loadIndianLanguages(): number`
+
+Convenience: Load all major Indian language packs.
+
+```typescript
+profanity.loadIndianLanguages();
+profanity.check('यह एक बेंगाली गाली है।'); // true (Bengali)
+profanity.check('This is a Tamil profanity: புண்டை'); // true
+```
+
+---
+
+### `loadCustomDictionary(name: string, words: string[]): void`
+
+Add your own dictionary as an additional language.
+
+```typescript
+profanity.loadCustomDictionary('swedish', ['fan', 'jävla', 'skit']);
+profanity.loadLanguage('swedish');
+profanity.check('Det här är skit.'); // true
+```
+
+---
+
+### `getLoadedLanguages(): string[]`
+
+Returns the names of all currently loaded language packs.
+
+```typescript
+console.log(profanity.getLoadedLanguages()); // ['english', 'hindi', ...]
+```
+
+---
+
+### `getAvailableLanguages(): string[]`
+
+Returns the names of all available built-in language packs.
+
+```typescript
+console.log(profanity.getAvailableLanguages());
+// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu']
+```
+
+---
+
+### `clearList(): void`
+
+Remove all loaded languages and dynamic words (start with a clean filter).
+
+```typescript
+profanity.clearList();
+profanity.check('fuck'); // false
+profanity.loadLanguage('english');
+profanity.check('fuck'); // true
+```
+
+---
+
+### `getConfig(): Partial<AllProfanityOptions>`
+
+Get the current configuration.
+
+```typescript
+console.log(profanity.getConfig());
+/*
+{
+  defaultPlaceholder: '*',
+  enableLeetSpeak: true,
+  caseSensitive: false,
+  strictMode: false,
+  detectPartialWords: false,
+  languages: [...],
+  whitelistWords: [...]
+}
+*/
+```
+
+---
+
+## Severity Levels
+
+Severity reflects the number and variety of detected profanities:
+
+| Level     | Enum Value | Description                             |
+|-----------|------------|-----------------------------------------|
+| MILD      | 1          | 1 unique/total word                     |
+| MODERATE  | 2          | 2 unique or total words                 |
+| SEVERE    | 3          | 3 unique/total words                    |
+| EXTREME   | 4          | 4+ unique or 5+ total profane words     |
+
+---
 
 ## Language Support
 
-### Current Languages
+- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu
+- **Scripts:** Latin/Roman, Devanagari, Tamil, Telugu, Bengali, etc.
+- **Mixed Content:** Handles mixed-language and code-switched sentences.
 
-#### English
-
-Built on top of the leo-profanity library, AllProfanity includes comprehensive English profanity detection.
-
-#### Hindi/Hinglish Support
-
-The library comes pre-loaded with an extensive list of Hindi profanities in both Devanagari and Roman scripts, as well as common Hinglish abbreviations and variations.
-
-```javascript
-// Hindi in Devanagari script
-profanity.check('इस वाक्य में लंड शब्द है।');  // true
-
-// Hindi in Roman script
-profanity.check('Is vakya mein lund shabd hai.');  // true
-
-// Hinglish abbreviations
-profanity.check('Usne bc kaha.');  // true
+```typescript
+profanity.check('This is bullshit and चूतिया.'); // true (mixed English/Hindi)
+profanity.check('Ce mot est merde and पागल.');   // true (French/Hindi)
 ```
 
-### Future Language Support
+---
 
-AllProfanity is designed with extensibility in mind. Future versions will include support for additional languages. If you'd like to contribute language packs, please see the Contributing section below.
+## Use Exported Wordlists
 
-## Mixed Language Content
+For sample words in a language (for UIs, admin, etc):
 
-AllProfanity effectively handles mixed-language content containing profanities from different languages:
-
-```javascript
-profanity.check('This English sentence has chutiya which is bad.');  // true
-profanity.check('I'm saying मादरचोद and bullshit in one sentence.');  // true
+```typescript
+import { englishBadWords, hindiBadWords } from 'allprofanity';
+console.log(englishBadWords.slice(0, 5)); // ["fuck", "shit", ...]
 ```
 
-## Customizing The Library
+---
 
-### Adding Custom Profanity Lists
+## Security
 
-You can add your own profanity lists to extend support for other languages:
+- **No wordlist exposure:** There is no `.list()` function for security and encapsulation. Use exported word arrays for samples.
+- **TRIE-based:** Scales easily to 50,000+ words.
+- **Handles leet-speak:** Catches obfuscated variants like `f#ck`, `a55hole`.
 
-```javascript
-// Add Spanish profanity words
-profanity.add([
-  'mierda',
-  'puta',
-  'pendejo',
-  'carajo',
-  'coño'
-]);
+---
 
-// Now it will detect Spanish profanity
-profanity.check('Este es un ejemplo de mierda.');  // true
+## Full Example
+
+```typescript
+import profanity, { ProfanitySeverity } from 'allprofanity';
+
+// Multi-language detection
+profanity.loadLanguages(['english', 'french', 'tamil']);
+console.log(profanity.check('Ce mot est merde.')); // true
+
+// Leet-speak detection
+console.log(profanity.check('You a f#cking a55hole!')); // true
+
+// Whitelisting
+profanity.addToWhitelist(['anal', 'ass']);
+console.log(profanity.check('He is an associate professor.')); // false
+
+// Severity
+const result = profanity.detect('This is fucking bullshit and chutiya.');
+console.log(ProfanitySeverity[result.severity]); // "SEVERE"
+
+// Custom dictionary
+profanity.loadCustomDictionary('pirate', ['barnacle-head', 'landlubber']);
+profanity.loadLanguage('pirate');
+console.log(profanity.check('You barnacle-head!')); // true
+
+// Placeholder configuration
+profanity.setPlaceholder('#');
+console.log(profanity.clean('This is bullshit.')); // "This is ########."
+profanity.setPlaceholder('*'); // Reset
 ```
 
-### Creating a Custom-Configured Instance
+---
 
-If you need multiple differently-configured instances of the filter, you can import the AllProfanity class directly:
+## FAQ
 
-```javascript
-import { AllProfanity } from 'allprofanity';
+**Q: How do I see all loaded profanities?**  
+A: For security, the internal word list is not exposed. Use `englishBadWords` etc. for samples.
 
-// Create custom instances
-const kidSafeFilter = new AllProfanity({ includeModerate: true });
-const adultFilter = new AllProfanity({ includeModerate: false });
-```
+**Q: How do I reset the filter?**  
+A: Use `clearList()` and reload languages/dictionaries.
 
-## Advanced Use Cases
+**Q: Is this safe for browser and Node.js?**  
+A: Yes! AllProfanity is universal.
 
-### Performance Optimization
-
-For applications processing large volumes of text:
-
-```javascript
-// Pre-compile your most used strings for faster checking
-const badWordsList = profanity.list();
-const preCompiledRegex = new RegExp('\\b(' + badWordsList.join('|') + ')\\b', 'i');
-
-function quickCheck(text) {
-  return preCompiledRegex.test(text);
-}
-```
-
-### Content Moderation Systems
-
-```javascript
-function moderateContent(content) {
-  if (profanity.check(content)) {
-    return {
-      isApproved: false,
-      cleanedContent: profanity.cleanWithWord(content, '[INAPPROPRIATE]'),
-      reason: 'Contains profanity'
-    };
-  }
-  return { isApproved: true, cleanedContent: content };
-}
-```
-
-## Use Cases
-
-- Content moderation systems
-- Chat applications
-- User-generated content platforms
-- Educational software
-- Forums and community platforms
-- Social media content filtering
-- Comment sections
-- Gaming chat filters
-- Email filtering
-- Document processing systems
-
-## Browser Support
-
-AllProfanity works in all modern browsers and Node.js environments.
+---
 
 ## Roadmap
 
-- Add support for more languages (Spanish, French, German, Arabic, etc.)
-- Contextual profanity detection
-- Severity levels for different categories of profanity
-- Phonetic matching for evasion attempts
-- Plugin system for custom detection strategies
+- More language packs (Arabic, Russian, etc.)
+- Contextual detection & severity scoring
+- Phonetic/typo/obfuscation resilience
+- Plugin system for custom detection
+
+---
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/ayush-jadaun/allprofanity/blob/main/LICENSE) file for details.
+MIT — See [LICENSE](https://github.com/ayush-jadaun/allprofanity/blob/main/LICENSE)
+
+---
 
 ## Contributing
 
-Contributions are welcome! Whether it's adding new language support, improving detection algorithms, or enhancing documentation.
+We welcome new language packs, detection improvements, and docs!  
+To add a new language, create a file in `src/languages/` and export a string array.  
+Open a PR or issue for bugs, features, or suggestions.
 
-Please feel free to submit a Pull Request or open an Issue on GitHub.
-
-### Adding a New Language
-
-To add support for a new language:
-
-1. Create a new file in the `src/languages` directory (e.g., `french-words.ts`)
-2. Follow the format of the existing word lists
-3. Submit a pull request with your changes
+---
 
 ## Acknowledgements
 
-- Built on top of [leo-profanity](https://github.com/jojoee/leo-profanity)
-
+Built on top of [leo-profanity](https://github.com/jojoee/leo-profanity) and improved with modern algorithms.
