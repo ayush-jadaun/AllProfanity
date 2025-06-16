@@ -380,6 +380,13 @@ A: Yes! AllProfanity is universal.
 
 ---
 
+## Middleware Examples
+
+**Looking for Express.js/Node.js middleware to use AllProfanity in your API or chat app?**  
+**Check the [`examples/`](./examples/) folder for ready-to-copy middleware and integration samples.**
+
+---
+
 ## Roadmap
 
 - More language packs (Arabic, Russian, etc.)
