@@ -1,4 +1,4 @@
-// Import language dictionaries (assuming these exist)
+// Language dictionaries imports
 import englishBadWords from "./languages/english-words.js";
 import hindiBadWords from "./languages/hindi-words.js";
 import frenchBadWords from "./languages/french-words.js";
@@ -19,16 +19,28 @@ export { default as tamilBadWords } from "./languages/tamil-words.js";
 export { default as teluguBadWords } from "./languages/telugu-words.js";
 
 /**
- * Logging interface for the library
+ * Logger interface for the library.
  */
 export interface Logger {
+  /**
+   * Log informational messages.
+   * @param message - The message to log.
+   */
   info(message: string): void;
+  /**
+   * Log warning messages.
+   * @param message - The message to log.
+   */
   warn(message: string): void;
+  /**
+   * Log error messages.
+   * @param message - The message to log.
+   */
   error(message: string): void;
 }
 
 /**
- * Default console logger implementation
+ * Default console logger implementation.
  */
 class ConsoleLogger implements Logger {
   info(message: string): void {
@@ -45,7 +57,7 @@ class ConsoleLogger implements Logger {
 }
 
 /**
- * Configuration options for AllProfanity
+ * Configuration options for AllProfanity.
  */
 export interface AllProfanityOptions {
   languages?: string[];
@@ -60,7 +72,7 @@ export interface AllProfanityOptions {
 }
 
 /**
- * Severity levels for profanity detection
+ * Severity levels for profanity detection.
  */
 export enum ProfanitySeverity {
   MILD = 1,
@@ -70,7 +82,7 @@ export enum ProfanitySeverity {
 }
 
 /**
- * Detection result interface
+ * Detection result for profanity detection.
  */
 export interface ProfanityDetectionResult {
   hasProfanity: boolean;
@@ -81,7 +93,7 @@ export interface ProfanityDetectionResult {
 }
 
 /**
- * Internal match result for efficient processing
+ * Internal match result for efficient processing.
  */
 interface MatchResult {
   word: string;
@@ -91,7 +103,11 @@ interface MatchResult {
 }
 
 /**
- * Validates input parameters
+ * Validate a string parameter.
+ * @param input - The input to validate.
+ * @param paramName - The name of the parameter.
+ * @returns The validated string.
+ * @throws {TypeError} If input is not a string.
  */
 function validateString(input: unknown, paramName: string): string {
   if (typeof input !== "string") {
@@ -100,6 +116,13 @@ function validateString(input: unknown, paramName: string): string {
   return input;
 }
 
+/**
+ * Validate a string array parameter.
+ * @param input - The input to validate.
+ * @param paramName - The name of the parameter.
+ * @returns The validated string array.
+ * @throws {TypeError} If input is not an array.
+ */
 function validateStringArray(input: unknown, paramName: string): string[] {
   if (!Array.isArray(input)) {
     throw new TypeError(`${paramName} must be an array`);
@@ -114,7 +137,7 @@ function validateStringArray(input: unknown, paramName: string): string[] {
 }
 
 /**
- * Efficient Trie data structure for fast string matching
+ * Trie node for efficient string matching.
  */
 class TrieNode {
   private children: Map<string, TrieNode> = new Map();
@@ -122,7 +145,8 @@ class TrieNode {
   private word: string = "";
 
   /**
-   * Add a word to the trie
+   * Add a word to the trie.
+   * @param word - The word to add.
    */
   addWord(word: string): void {
     let current: TrieNode = this;
@@ -140,7 +164,9 @@ class TrieNode {
   }
 
   /**
-   * Remove a word from the trie
+   * Remove a word from the trie.
+   * @param word - The word to remove.
+   * @returns True if the word was removed, false otherwise.
    */
   removeWord(word: string): boolean {
     return this.removeHelper(word, 0);
@@ -169,7 +195,11 @@ class TrieNode {
   }
 
   /**
-   * Find all matches starting at a given position
+   * Find all matches starting at a given position.
+   * @param text - The text to search.
+   * @param startPos - The start position.
+   * @param allowPartial - Whether to allow partial word matches.
+   * @returns Array of matches.
    */
   findMatches(
     text: string,
@@ -210,7 +240,7 @@ class TrieNode {
   }
 
   /**
-   * Clear all words from the trie
+   * Clear all words from the trie.
    */
   clear(): void {
     this.children.clear();
@@ -220,8 +250,7 @@ class TrieNode {
 }
 
 /**
- * Advanced AllProfanity - Fixed profanity filter with multi-language support
- * Addresses all critical issues from the original implementation
+ * Main class for profanity detection and filtering.
  */
 export class AllProfanity {
   private readonly profanityTrie: TrieNode = new TrieNode();
@@ -229,14 +258,12 @@ export class AllProfanity {
   private readonly loadedLanguages: Set<string> = new Set();
   private readonly logger: Logger;
 
-  // Configuration
   private defaultPlaceholder: string = "*";
   private enableLeetSpeak: boolean = true;
   private caseSensitive: boolean = false;
   private strictMode: boolean = false;
   private detectPartialWords: boolean = false;
 
-  // Available language dictionaries
   private readonly availableLanguages: Record<string, string[]> = {
     english: englishBadWords || [],
     hindi: hindiBadWords || [],
@@ -248,7 +275,6 @@ export class AllProfanity {
     telugu: teluguBadWords || [],
   };
 
-  // Fixed leet speak mappings
   private readonly leetMappings: Map<string, string> = new Map([
     ["@", "a"],
     ["^", "a"],
@@ -308,13 +334,15 @@ export class AllProfanity {
     ["7_", "z"],
   ]);
 
-  // Dynamic words added at runtime
   private readonly dynamicWords: Set<string> = new Set();
 
+  /**
+   * Create an AllProfanity instance.
+   * @param options - Profanity filter configuration options.
+   */
   constructor(options?: AllProfanityOptions) {
     this.logger = options?.logger || new ConsoleLogger();
 
-    // Validate and set configuration
     if (options?.defaultPlaceholder !== undefined) {
       this.setPlaceholder(options.defaultPlaceholder);
     }
@@ -324,21 +352,17 @@ export class AllProfanity {
     this.strictMode = options?.strictMode ?? false;
     this.detectPartialWords = options?.detectPartialWords ?? false;
 
-    // Load whitelist
     if (options?.whitelistWords) {
       this.addToWhitelist(options.whitelistWords);
     }
 
-    // Load default languages
     this.loadLanguage("english");
     this.loadLanguage("hindi");
 
-    // Load additional languages
     if (options?.languages?.length) {
       options.languages.forEach((lang) => this.loadLanguage(lang));
     }
 
-    // Load custom dictionaries
     if (options?.customDictionaries) {
       Object.entries(options.customDictionaries).forEach(([name, words]) => {
         this.loadCustomDictionary(name, words);
@@ -347,7 +371,9 @@ export class AllProfanity {
   }
 
   /**
-   * Normalize text by converting leet speak to regular characters.
+   * Normalize leet speak to regular characters.
+   * @param text - The input text.
+   * @returns Normalized text.
    */
   private normalizeLeetSpeak(text: string): string {
     if (!this.enableLeetSpeak) return text;
@@ -364,14 +390,20 @@ export class AllProfanity {
   }
 
   /**
-   * Properly escape regex special characters
+   * Escape regex special characters in a string.
+   * @param str - The string to escape.
+   * @returns The escaped string.
    */
   private escapeRegex(str: string): string {
     return str.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
   }
 
   /**
-   * Check if a position has word boundaries (for strict mode)
+   * Check if a match is bounded by word boundaries (strict mode).
+   * @param text - The text.
+   * @param start - Start index.
+   * @param end - End index.
+   * @returns True if match is at word boundaries, false otherwise.
    */
   private hasWordBoundaries(text: string, start: number, end: number): boolean {
     if (!this.strictMode) return true;
@@ -384,26 +416,23 @@ export class AllProfanity {
   }
 
   /**
-   * Helper method to verify whole-word matching.
+   * Determine if a match is a whole word.
+   * @param text - The text.
+   * @param start - Start index.
+   * @param end - End index.
+   * @returns True if whole word, false otherwise.
    */
   private isWholeWord(text: string, start: number, end: number): boolean {
-    // Check left boundary
-    if (start === 0) {
-      // ok
-    } else if (/\w/.test(text[start - 1])) {
-      return false;
-    }
-    // Check right boundary
-    if (end === text.length) {
-      // ok
-    } else if (/\w/.test(text[end])) {
-      return false;
-    }
+    if (start !== 0 && /\w/.test(text[start - 1])) return false;
+    if (end !== text.length && /\w/.test(text[end])) return false;
     return true;
   }
 
   /**
-   * Check if a match is whitelisted (by actual matched substring and dictionary word)
+   * Check if a match is whitelisted.
+   * @param word - Word from dictionary.
+   * @param matchedText - Actual matched text.
+   * @returns True if whitelisted, false otherwise.
    */
   private isWhitelistedMatch(word: string, matchedText: string): boolean {
     if (this.caseSensitive) {
@@ -417,7 +446,9 @@ export class AllProfanity {
   }
 
   /**
-   * Remove overlapping matches, keep only the longest at each start position
+   * Remove overlapping matches, keeping only the longest at each start position.
+   * @param matches - Array of match results.
+   * @returns Deduplicated matches.
    */
   private deduplicateMatches(matches: MatchResult[]): MatchResult[] {
     const sorted = [...matches].sort((a, b) => {
@@ -436,7 +467,9 @@ export class AllProfanity {
   }
 
   /**
-   * Advanced profanity detection using efficient trie-based algorithm
+   * Detect profanity in a given text.
+   * @param text - The text to check.
+   * @returns Profanity detection result.
    */
   detect(text: string): ProfanityDetectionResult {
     const validatedText = validateString(text, "text");
@@ -455,7 +488,6 @@ export class AllProfanity {
       : validatedText.toLowerCase();
     this.findMatches(normalizedText, validatedText, matches);
 
-    // Leet speak detection (normalize and search, map back to original)
     if (this.enableLeetSpeak) {
       const leetNormalized = this.normalizeLeetSpeak(normalizedText);
       if (leetNormalized !== normalizedText) {
@@ -482,6 +514,9 @@ export class AllProfanity {
 
   /**
    * Main matching function, with whole-word logic.
+   * @param searchText - The normalized text to search.
+   * @param originalText - The original text.
+   * @param matches - Array to collect matches.
    */
   private findMatches(
     searchText: string,
@@ -497,14 +532,12 @@ export class AllProfanity {
       for (const match of matchResults) {
         const start = i + match.start;
         const end = i + match.end;
-        // Only match whole words if !detectPartialWords
         if (
           !this.detectPartialWords &&
           !this.isWholeWord(originalText, start, end)
         ) {
           continue;
         }
-        // Use actual matched text for whitelist check
         const matchedText = originalText.substring(start, end);
         if (this.isWhitelistedMatch(match.word, matchedText)) {
           continue;
@@ -522,7 +555,10 @@ export class AllProfanity {
   }
 
   /**
-   * Generate cleaned text by replacing profane words (non-overlapping only)
+   * Generate cleaned text by replacing profane words.
+   * @param originalText - The original text.
+   * @param matches - Array of matches.
+   * @returns Cleaned text.
    */
   private generateCleanedText(
     originalText: string,
@@ -531,8 +567,6 @@ export class AllProfanity {
     if (matches.length === 0) return originalText;
 
     let result = originalText;
-
-    // Process matches in reverse order to maintain indices and avoid overlap
     const sortedMatches = [...this.deduplicateMatches(matches)].sort(
       (a, b) => b.start - a.start
     );
@@ -551,14 +585,19 @@ export class AllProfanity {
   }
 
   /**
-   * Simple boolean check for profanity
+   * Check if a string contains profanity.
+   * @param text - The text to check.
+   * @returns True if profanity is found, false otherwise.
    */
   check(text: string): boolean {
     return this.detect(text).hasProfanity;
   }
 
   /**
-   * Clean text with custom placeholder
+   * Clean text with a custom placeholder.
+   * @param text - The text to clean.
+   * @param placeholder - The placeholder to use.
+   * @returns Cleaned text.
    */
   clean(text: string, placeholder?: string): string {
     const detection = this.detect(text);
@@ -567,7 +606,6 @@ export class AllProfanity {
       return detection.cleanedText;
     }
 
-    // Use custom placeholder
     let result = text;
     const sortedPositions = [
       ...this.deduplicateMatches(
@@ -593,14 +631,16 @@ export class AllProfanity {
   }
 
   /**
-   * Clean text by replacing each profane word with a single placeholder (word-level)
+   * Clean text by replacing each profane word with a single placeholder (word-level).
+   * @param text - The text to clean.
+   * @param placeholder - The placeholder to use.
+   * @returns Word-level cleaned text.
    */
   cleanWithPlaceholder(text: string, placeholder: string = "***"): string {
     const detection = this.detect(text);
     if (detection.positions.length === 0) return text;
 
     let result = text;
-    // Sort matches so later matches don't affect earlier ones
     const sortedPositions = [
       ...this.deduplicateMatches(
         detection.positions.map((p) => ({
@@ -613,7 +653,6 @@ export class AllProfanity {
     ].sort((a, b) => b.start - a.start);
 
     for (const pos of sortedPositions) {
-      // Only replace whole words!
       if (!this.isWholeWord(result, pos.start, pos.end)) continue;
       result =
         result.substring(0, pos.start) +
@@ -625,7 +664,8 @@ export class AllProfanity {
   }
 
   /**
-   * Add word(s) to the profanity list
+   * Add word(s) to the profanity filter.
+   * @param word - Word or array of words to add.
    */
   add(word: string | string[]): void {
     const words = Array.isArray(word) ? word : [word];
@@ -637,7 +677,8 @@ export class AllProfanity {
   }
 
   /**
-   * Remove word(s) from the profanity list
+   * Remove word(s) from the profanity filter.
+   * @param word - Word or array of words to remove.
    */
   remove(word: string | string[]): void {
     const words = Array.isArray(word) ? word : [word];
@@ -650,7 +691,8 @@ export class AllProfanity {
   }
 
   /**
-   * Add words to whitelist
+   * Add words to the whitelist.
+   * @param words - Words to whitelist.
    */
   addToWhitelist(words: string[]): void {
     const validatedWords = validateStringArray(words, "whitelist words");
@@ -661,7 +703,8 @@ export class AllProfanity {
   }
 
   /**
-   * Remove words from whitelist
+   * Remove words from the whitelist.
+   * @param words - Words to remove from whitelist.
    */
   removeFromWhitelist(words: string[]): void {
     const validatedWords = validateStringArray(words, "whitelist words");
@@ -672,7 +715,9 @@ export class AllProfanity {
   }
 
   /**
-   * Helper for whitelist checking with correct normalization
+   * Check if a word is whitelisted.
+   * @param word - The word to check.
+   * @returns True if whitelisted, false otherwise.
    */
   private isWhitelisted(word: string): boolean {
     const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
@@ -680,7 +725,9 @@ export class AllProfanity {
   }
 
   /**
-   * Load a built-in language dictionary
+   * Load a built-in language dictionary.
+   * @param language - The language key.
+   * @returns True if loaded, false otherwise.
    */
   loadLanguage(language: string): boolean {
     if (!language || typeof language !== "string") {
@@ -720,7 +767,9 @@ export class AllProfanity {
   }
 
   /**
-   * Load multiple languages at once
+   * Load multiple language dictionaries.
+   * @param languages - Array of languages to load.
+   * @returns Number of successfully loaded languages.
    */
   loadLanguages(languages: string[]): number {
     const validatedLanguages = validateStringArray(languages, "languages");
@@ -730,7 +779,8 @@ export class AllProfanity {
   }
 
   /**
-   * Load all Indian languages
+   * Load all supported Indian languages.
+   * @returns Number of loaded Indian languages.
    */
   loadIndianLanguages(): number {
     const indianLanguages = ["hindi", "bengali", "tamil", "telugu"];
@@ -738,7 +788,9 @@ export class AllProfanity {
   }
 
   /**
-   * Load a custom dictionary
+   * Load a custom dictionary.
+   * @param name - Name of the dictionary.
+   * @param words - Words to add.
    */
   loadCustomDictionary(name: string, words: string[]): void {
     validateString(name, "dictionary name");
@@ -760,7 +812,6 @@ export class AllProfanity {
         }
       }
 
-      // Store for future reference
       this.availableLanguages[name.toLowerCase()] = validatedWords;
       this.loadedLanguages.add(name.toLowerCase());
 
@@ -773,7 +824,9 @@ export class AllProfanity {
   }
 
   /**
-   * Add a single word to the trie structure
+   * Add a single word to the trie.
+   * @param word - The word to add.
+   * @returns True if added, false otherwise.
    */
   private addWordToTrie(word: string): boolean {
     if (!word || typeof word !== "string" || word.trim().length === 0) {
@@ -784,18 +837,18 @@ export class AllProfanity {
       ? word.trim()
       : word.trim().toLowerCase();
 
-    // Skip if whitelisted
     if (this.isWhitelisted(normalizedWord)) {
       return false;
     }
 
-    // Add to trie
     this.profanityTrie.addWord(normalizedWord);
     return true;
   }
 
   /**
-   * Remove overlapping matches, keep only the longest at each start position
+   * Calculate severity from matches.
+   * @param matches - Array of matches.
+   * @returns Severity level.
    */
   private calculateSeverity(matches: MatchResult[]): ProfanitySeverity {
     if (matches.length === 0) return ProfanitySeverity.MILD;
@@ -811,7 +864,7 @@ export class AllProfanity {
   }
 
   /**
-   * Clear all loaded dictionaries
+   * Clear all loaded dictionaries and dynamic words.
    */
   clearList(): void {
     this.profanityTrie.clear();
@@ -820,7 +873,8 @@ export class AllProfanity {
   }
 
   /**
-   * Set placeholder character
+   * Set the placeholder character for filtered words.
+   * @param placeholder - The placeholder character.
    */
   setPlaceholder(placeholder: string): void {
     validateString(placeholder, "placeholder");
@@ -833,21 +887,24 @@ export class AllProfanity {
   }
 
   /**
-   * Get loaded languages
+   * Get the list of loaded languages.
+   * @returns Array of loaded language keys.
    */
   getLoadedLanguages(): string[] {
     return Array.from(this.loadedLanguages);
   }
 
   /**
-   * Get available languages
+   * Get the list of available built-in languages.
+   * @returns Array of available language keys.
    */
   getAvailableLanguages(): string[] {
     return Object.keys(this.availableLanguages);
   }
 
   /**
-   * Get current configuration
+   * Get the current configuration of the profanity filter.
+   * @returns Partial configuration object.
    */
   getConfig(): Partial<AllProfanityOptions> {
     return {
@@ -862,25 +919,24 @@ export class AllProfanity {
   }
 
   /**
-   * Rebuilds the profanity trie from loaded language dictionaries and dynamic words.
+   * Rebuild the profanity trie from loaded dictionaries and dynamic words.
    */
   private rebuildTrie(): void {
     this.profanityTrie.clear();
-    // Re-add all loaded language words
     for (const lang of this.loadedLanguages) {
       const words = this.availableLanguages[lang] || [];
       for (const word of words) {
         this.addWordToTrie(word);
       }
     }
-    // Re-add dynamic words
     for (const word of this.dynamicWords) {
       this.addWordToTrie(word);
     }
   }
 
   /**
-   * Update configuration. Rebuild trie if needed.
+   * Update configuration options for the profanity filter.
+   * @param options - Partial configuration object.
    */
   updateConfig(options: Partial<AllProfanityOptions>): void {
     let rebuildNeeded = false;
@@ -912,6 +968,8 @@ export class AllProfanity {
   }
 }
 
-// Create and export a singleton instance
+/**
+ * Singleton instance of AllProfanity with default configuration.
+ */
 const allProfanity = new AllProfanity();
 export default allProfanity;
