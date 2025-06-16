@@ -400,9 +400,3 @@ MIT — See [LICENSE](https://github.com/ayush-jadaun/allprofanity/blob/main/LIC
 We welcome new language packs, detection improvements, and docs!  
 To add a new language, create a file in `src/languages/` and export a string array.  
 Open a PR or issue for bugs, features, or suggestions.
-
----
-
-## Acknowledgements
-
-Built on top of [leo-profanity](https://github.com/jojoee/leo-profanity) and improved with modern algorithms.
