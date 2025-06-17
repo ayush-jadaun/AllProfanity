@@ -143,11 +143,11 @@ profanity.check('Esto es mierda.'); // false
 Whitelist words so they are never flagged as profane.
 
 ```typescript
-profanity.addToWhitelist(['anal', 'ass']);
-profanity.check('He is an associate professor.'); // false
-profanity.check('I work as an analyst.'); // false
+profanity.addToWhitelist(['fuck', 'idiot','shit']);
+profanity.check('He is an fucking idiot.'); // false
+profanity.check('Fuck this shit.'); // false
 // Remove from whitelist to restore detection
-profanity.removeFromWhitelist(['anal', 'ass']);
+profanity.removeFromWhitelist(['fuck', 'idiot','shit']);
 ```
 
 ---
