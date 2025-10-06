@@ -1,11 +1,4 @@
 import filter from "../src/index";
-import hindiBadWordsList from "../src/languages/hindi-words";
-import bengaliBadWordsList from "../src/languages/bengali-words";
-import tamilBadWordsList from "../src/languages/tamil-words";
-import teluguBadWordsList from "../src/languages/telugu-words";
-import frenchBadWordsList from "../src/languages/french-words";
-import germanBadWordsList from "../src/languages/german-words";
-import spanishBadWordsList from "../src/languages/spanish-words";
 
 
 // Sample words for testing
@@ -22,6 +15,7 @@ const TELUGU_BAD_WORD_ROMAN = "pooku";
 const FRENCH_BAD_WORD = "merde";
 const GERMAN_BAD_WORD = "scheisse";
 const SPANISH_BAD_WORD = "mierda";
+const GREEK_BAD_WORD = "σκατά";
 const HINDI_CLEAN_WORD = "अच्छा";
 const ENGLISH_CLEAN_WORD = "excellent";
 const BENGALI_CLEAN_WORD = "ভালো";
@@ -30,6 +24,7 @@ const TELUGU_CLEAN_WORD = "మంచి";
 const FRENCH_CLEAN_WORD = "bonjour";
 const GERMAN_CLEAN_WORD = "Guten";
 const SPANISH_CLEAN_WORD = "bueno";
+const GREEK_CLEAN_WORD = "μεγαλεπήβολος";
 
 // Leet speak test words
 const LEET_SPEAK_TESTS = [
@@ -63,6 +58,7 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
       FRENCH_BAD_WORD,
       GERMAN_BAD_WORD,
       SPANISH_BAD_WORD,
+      GREEK_BAD_WORD,
     ]);
   });
 
@@ -78,6 +74,7 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
       FRENCH_BAD_WORD,
       GERMAN_BAD_WORD,
       SPANISH_BAD_WORD,
+      GREEK_BAD_WORD,
     ]);
   });
 
@@ -94,6 +91,7 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
           "french",
           "german",
           "spanish",
+          "greek",
         ])
       );
     });
@@ -109,6 +107,7 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
           "french",
           "german",
           "spanish",
+          "greek",
         ])
       );
     });
@@ -161,6 +160,7 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
       expect(filter.check(FRENCH_BAD_WORD)).toBe(true);
       expect(filter.check(GERMAN_BAD_WORD)).toBe(true);
       expect(filter.check(SPANISH_BAD_WORD)).toBe(true);
+      expect(filter.check(GREEK_BAD_WORD)).toBe(true);
     });
   });
 
@@ -247,6 +247,10 @@ describe("AllProfanity Filter - Upgraded Test Suite", () => {
         {
           word: SPANISH_BAD_WORD,
           text: `Esta frase contiene ${SPANISH_BAD_WORD}.`,
+        },
+        {
+          word: GREEK_BAD_WORD,
+          text: `Αυτή η φράση περιέχει ${GREEK_BAD_WORD}.`,
         },
       ];
 

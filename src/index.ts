@@ -1,20 +1,22 @@
 // Language dictionaries imports
+import bengaliBadWords from "./languages/bengali-words.js";
 import englishBadWords from "./languages/english-words.js";
-import hindiBadWords from "./languages/hindi-words.js";
 import frenchBadWords from "./languages/french-words.js";
 import germanBadWords from "./languages/german-words.js";
+import greekBadWords from "./languages/greek-words.js";
+import hindiBadWords from "./languages/hindi-words.js";
 import spanishBadWords from "./languages/spanish-words.js";
-import bengaliBadWords from "./languages/bengali-words.js";
 import tamilBadWords from "./languages/tamil-words.js";
 import teluguBadWords from "./languages/telugu-words.js";
 
 // Export language dictionaries for direct access
+export { default as bengaliBadWords } from "./languages/bengali-words.js";
 export { default as englishBadWords } from "./languages/english-words.js";
-export { default as hindiBadWords } from "./languages/hindi-words.js";
 export { default as frenchBadWords } from "./languages/french-words.js";
 export { default as germanBadWords } from "./languages/german-words.js";
+export { default as greekBadWords } from "./languages/greek-words.js";
+export { default as hindiBadWords } from "./languages/hindi-words.js";
 export { default as spanishBadWords } from "./languages/spanish-words.js";
-export { default as bengaliBadWords } from "./languages/bengali-words.js";
 export { default as tamilBadWords } from "./languages/tamil-words.js";
 export { default as teluguBadWords } from "./languages/telugu-words.js";
 
@@ -273,6 +275,7 @@ export class AllProfanity {
     bengali: bengaliBadWords || [],
     tamil: tamilBadWords || [],
     telugu: teluguBadWords || [],
+    greek: greekBadWords || [],
   };
 
   private readonly leetMappings: Map<string, string> = new Map([

@@ -10,7 +10,7 @@ A blazing-fast, multi-language, enterprise-grade profanity filter for JavaScript
 ## Features
 
 - **Ultra-Fast O(n) Detection:** TRIE-based, single-pass algorithm for massive performance gains over regex/set-based filters.
-- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu. Load multiple at once.
+- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Greek. Load multiple at once.
 - **Multiple Scripts:** Detects profanity in Latin/Roman (Hinglish) and native scripts (e.g., Devanagari, Tamil, Telugu).
 - **Advanced Leet-Speak Normalization:** Detects obfuscated profanities (`f#ck`, `a55hole`, etc.) with context-aware mapping.
 - **Unicode & Punctuation Robustness:** Handles word boundaries and mixed language content with near-zero false positives.
@@ -250,7 +250,7 @@ Returns the names of all available built-in language packs.
 
 ```typescript
 console.log(profanity.getAvailableLanguages());
-// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu']
+// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu', 'greek']
 ```
 
 ---
@@ -304,7 +304,7 @@ Severity reflects the number and variety of detected profanities:
 
 ## Language Support
 
-- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu
+- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Greek
 - **Scripts:** Latin/Roman, Devanagari, Tamil, Telugu, Bengali, etc.
 - **Mixed Content:** Handles mixed-language and code-switched sentences.
 
