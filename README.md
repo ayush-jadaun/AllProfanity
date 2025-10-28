@@ -250,7 +250,7 @@ Returns the names of all available built-in language packs.
 
 ```typescript
 console.log(profanity.getAvailableLanguages());
-// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu']
+// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu', 'brazilian']
 ```
 
 ---
