@@ -7,6 +7,7 @@ import spanishBadWords from "./languages/spanish-words.js";
 import bengaliBadWords from "./languages/bengali-words.js";
 import tamilBadWords from "./languages/tamil-words.js";
 import teluguBadWords from "./languages/telugu-words.js";
+import brazilianBadWords from "./languages/brazilian-words.js";
 
 // Export language dictionaries for direct access
 export { default as englishBadWords } from "./languages/english-words.js";
@@ -17,6 +18,7 @@ export { default as spanishBadWords } from "./languages/spanish-words.js";
 export { default as bengaliBadWords } from "./languages/bengali-words.js";
 export { default as tamilBadWords } from "./languages/tamil-words.js";
 export { default as teluguBadWords } from "./languages/telugu-words.js";
+export { default as brazilianBadWords } from "./languages/brazilian-words.js";
 
 /**
  * Logger interface for the library.
@@ -273,6 +275,7 @@ export class AllProfanity {
     bengali: bengaliBadWords || [],
     tamil: tamilBadWords || [],
     telugu: teluguBadWords || [],
+    brazilian: brazilianBadWords || [],
   };
 
   private readonly leetMappings: Map<string, string> = new Map([
