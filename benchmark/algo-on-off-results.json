@@ -1,0 +1,79 @@
+{
+  "timestamp": "2025-12-04T19:33:52.879Z",
+  "totalTests": 9,
+  "algorithmsOFF": {
+    "correct": 7,
+    "accuracy": "77.8%"
+  },
+  "algorithmsON": {
+    "correct": 9,
+    "accuracy": "100.0%"
+  },
+  "improvements": 2,
+  "improvementPercentage": "22.2%",
+  "testCases": [
+    {
+      "category": "False Positive Reduction",
+      "text": "The assassin was caught",
+      "expected": "Should NOT flag (legitimate word)",
+      "resultOFF": false,
+      "resultON": false
+    },
+    {
+      "category": "False Positive Reduction",
+      "text": "I need assistance with this",
+      "expected": "Should NOT flag (professional term)",
+      "resultOFF": false,
+      "resultON": false
+    },
+    {
+      "category": "False Positive Reduction",
+      "text": "The class assignment is due",
+      "expected": "Should NOT flag (academic context)",
+      "resultOFF": false,
+      "resultON": false
+    },
+    {
+      "category": "Context Understanding",
+      "text": "This is not fucking acceptable",
+      "expected": "Should reduce severity (negation)",
+      "resultOFF": true,
+      "resultON": false
+    },
+    {
+      "category": "Context Understanding",
+      "text": "That was damn good work",
+      "expected": "Should NOT flag (emphasis, not insult)",
+      "resultOFF": false,
+      "resultON": false
+    },
+    {
+      "category": "Medical/Technical",
+      "text": "The anal region was examined",
+      "expected": "Should NOT flag (medical context)",
+      "resultOFF": true,
+      "resultON": false
+    },
+    {
+      "category": "Clear Profanity (Should Flag)",
+      "text": "You're a fucking idiot",
+      "expected": "SHOULD flag (hostile intent)",
+      "resultOFF": true,
+      "resultON": true
+    },
+    {
+      "category": "Clear Profanity (Should Flag)",
+      "text": "This is complete bullshit",
+      "expected": "SHOULD flag (unambiguous)",
+      "resultOFF": true,
+      "resultON": true
+    },
+    {
+      "category": "Clear Profanity (Should Flag)",
+      "text": "Go to hell, asshole",
+      "expected": "SHOULD flag (direct attack)",
+      "resultOFF": true,
+      "resultON": true
+    }
+  ]
+}

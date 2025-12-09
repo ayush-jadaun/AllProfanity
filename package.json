@@ -1,7 +1,7 @@
 {
   "name": "allprofanity",
-  "version": "2.1.1",
-  "description": "A TypeScript package to filter Hindi and Hinglish bad words from text",
+  "version": "2.2.0",
+  "description": "A blazing-fast, multi-language profanity filter with advanced algorithms (Aho-Corasick, Bloom Filters) delivering 664% faster performance on large texts, intelligent leet-speak detection, and pattern-based context analysis",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,6 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "benchmark": "npm run build && node --expose-gc dist/benchmark/profanity-benchmark.js",
+    "benchmark:no-gc": "npm run build && node dist/benchmark/profanity-benchmark.js",
     "clean": "rimraf dist coverage",
     "prepare": "npm run clean && npm run build",
     "prepublishOnly": "npm test",
@@ -18,14 +20,21 @@
     "version": "git add -A src"
   },
   "keywords": [
-    "hindi",
-    "hinglish",
     "profanity",
     "filter",
     "bad-words",
     "censorship",
     "content-moderation",
-    "typescript"
+    "aho-corasick",
+    "bloom-filter",
+    "pattern-matching",
+    "hindi",
+    "hinglish",
+    "multi-language",
+    "typescript",
+    "performance",
+    "fast",
+    "leet-speak"
   ],
   "author": {
     "name": "Ayush Jadaun",
@@ -48,7 +57,14 @@
   },
   "files": [
     "dist",
+    "bin",
     "LICENSE",
-    "README.md"
-  ]
+    "README.md",
+    "allprofanity.config.example.json",
+    "config.schema.json",
+    "CONTRIBUTORS.md"
+  ],
+  "bin": {
+    "allprofanity": "./bin/init.js"
+  }
 }

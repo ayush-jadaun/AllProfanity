@@ -1,11 +1,11 @@
-import filter from "../src/index";
-import hindiBadWordsList from "../src/languages/hindi-words";
-import bengaliBadWordsList from "../src/languages/bengali-words";
-import tamilBadWordsList from "../src/languages/tamil-words";
-import teluguBadWordsList from "../src/languages/telugu-words";
-import frenchBadWordsList from "../src/languages/french-words";
-import germanBadWordsList from "../src/languages/german-words";
-import spanishBadWordsList from "../src/languages/spanish-words";
+import filter from "../src/index.js";
+import hindiBadWordsList from "../src/languages/hindi-words.js";
+import bengaliBadWordsList from "../src/languages/bengali-words.js";
+import tamilBadWordsList from "../src/languages/tamil-words.js";
+import teluguBadWordsList from "../src/languages/telugu-words.js";
+import frenchBadWordsList from "../src/languages/french-words.js";
+import germanBadWordsList from "../src/languages/german-words.js";
+import spanishBadWordsList from "../src/languages/spanish-words.js";
 
 
 // Sample words for testing

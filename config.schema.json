@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AllProfanity Configuration",
+  "description": "Configuration schema for AllProfanity advanced algorithms and detection settings",
+  "type": "object",
+  "properties": {
+    "algorithm": {
+      "type": "object",
+      "description": "Algorithm selection and configuration",
+      "properties": {
+        "matching": {
+          "type": "string",
+          "enum": ["trie", "aho-corasick", "hybrid"],
+          "default": "trie",
+          "description": "Primary matching algorithm: trie (default), aho-corasick (faster for many patterns), or hybrid"
+        },
+        "useAhoCorasick": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Aho-Corasick algorithm for multi-pattern matching"
+        },
+        "useBloomFilter": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Bloom Filter for fast pre-filtering (reduces false positives)"
+        },
+        "useContextAnalysis": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable context-aware analysis to reduce false positives"
+        }
+      },
+      "required": ["matching"]
+    },
+    "bloomFilter": {
+      "type": "object",
+      "description": "Bloom filter configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable Bloom filter"
+        },
+        "expectedItems": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 1000000,
+          "default": 10000,
+          "description": "Expected number of items in the filter"
+        },
+        "falsePositiveRate": {
+          "type": "number",
+          "minimum": 0.001,
+          "maximum": 0.1,
+          "default": 0.01,
+          "description": "Acceptable false positive rate (0.01 = 1%)"
+        }
+      }
+    },
+    "ahoCorasick": {
+      "type": "object",
+      "description": "Aho-Corasick algorithm configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable Aho-Corasick algorithm"
+        },
+        "prebuild": {
+          "type": "boolean",
+          "default": true,
+          "description": "Prebuild the automaton at initialization (recommended for production)"
+        }
+      }
+    },
+    "contextAnalysis": {
+      "type": "object",
+      "description": "Context-aware analysis configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable context analysis"
+        },
+        "contextWindow": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 200,
+          "default": 50,
+          "description": "Number of characters to analyze before/after match"
+        },
+        "languages": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["en", "hi", "fr", "de", "es", "bn", "ta", "te", "*"]
+          },
+          "default": ["en"],
+          "description": "Languages for context pattern matching"
+        },
+        "scoreThreshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.5,
+          "description": "Minimum confidence score to flag as profanity (0-1)"
+        }
+      }
+    },
+    "profanityDetection": {
+      "type": "object",
+      "description": "Core profanity detection settings",
+      "properties": {
+        "enableLeetSpeak": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable leet-speak normalization (f#ck, 4ss, etc.)"
+        },
+        "caseSensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable case-sensitive matching"
+        },
+        "strictMode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Require word boundaries for matches"
+        },
+        "detectPartialWords": {
+          "type": "boolean",
+          "default": false,
+          "description": "Detect profanity within larger words"
+        },
+        "defaultPlaceholder": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1,
+          "default": "*",
+          "description": "Default character for censoring"
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "description": "Performance optimization settings",
+      "properties": {
+        "cacheSize": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100000,
+          "default": 1000,
+          "description": "Size of result cache (0 = disabled)"
+        },
+        "enableCaching": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable result caching for repeated checks"
+        }
+      }
+    }
+  },
+  "required": ["algorithm", "profanityDetection"]
+}

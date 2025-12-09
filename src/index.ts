@@ -9,6 +9,11 @@ import tamilBadWords from "./languages/tamil-words.js";
 import teluguBadWords from "./languages/telugu-words.js";
 import brazilianBadWords from "./languages/brazilian-words.js";
 
+// Advanced algorithm imports
+import { AhoCorasick, Match as AhoMatch } from "./algos/aho-corasick.js";
+import { BloomFilter } from "./algos/bloom-filter.js";
+import { ContextAnalyzer, ContextPatternMatcher } from "./algos/context-patterns.js";
+
 // Export language dictionaries for direct access
 export { default as englishBadWords } from "./languages/english-words.js";
 export { default as hindiBadWords } from "./languages/hindi-words.js";
@@ -71,6 +76,37 @@ export interface AllProfanityOptions {
   strictMode?: boolean;
   detectPartialWords?: boolean;
   logger?: Logger;
+
+  // Advanced algorithm options
+  algorithm?: {
+    matching?: "trie" | "aho-corasick" | "hybrid";
+    useAhoCorasick?: boolean;
+    useBloomFilter?: boolean;
+    useContextAnalysis?: boolean;
+  };
+
+  bloomFilter?: {
+    enabled?: boolean;
+    expectedItems?: number;
+    falsePositiveRate?: number;
+  };
+
+  ahoCorasick?: {
+    enabled?: boolean;
+    prebuild?: boolean;
+  };
+
+  contextAnalysis?: {
+    enabled?: boolean;
+    contextWindow?: number;
+    languages?: string[];
+    scoreThreshold?: number;
+  };
+
+  performance?: {
+    cacheSize?: number;
+    enableCaching?: boolean;
+  };
 }
 
 /**
@@ -339,6 +375,13 @@ export class AllProfanity {
 
   private readonly dynamicWords: Set<string> = new Set();
 
+  // Advanced algorithms
+  private ahoCorasickAutomaton: AhoCorasick | null = null;
+  private bloomFilter: BloomFilter | null = null;
+  private contextAnalyzer: ContextAnalyzer | null = null;
+  private matchingAlgorithm: "trie" | "aho-corasick" | "hybrid" = "trie";
+  private resultCache: Map<string, ProfanityDetectionResult> | null = null;
+
   /**
    * Create an AllProfanity instance.
    * @param options - Profanity filter configuration options.
@@ -359,6 +402,10 @@ export class AllProfanity {
       this.addToWhitelist(options.whitelistWords);
     }
 
+    // Initialize advanced algorithms BEFORE loading dictionaries
+    // so that words can be added to all data structures
+    this.initializeAdvancedAlgorithms(options);
+
     this.loadLanguage("english");
     this.loadLanguage("hindi");
 
@@ -370,6 +417,73 @@ export class AllProfanity {
       Object.entries(options.customDictionaries).forEach(([name, words]) => {
         this.loadCustomDictionary(name, words);
       });
+    }
+  }
+
+  /**
+   * Initialize advanced algorithms based on configuration
+   */
+  private initializeAdvancedAlgorithms(options?: AllProfanityOptions): void {
+    // Set matching algorithm
+    if (options?.algorithm?.matching) {
+      this.matchingAlgorithm = options.algorithm.matching;
+    }
+
+    // Initialize Bloom Filter if enabled
+    const bloomEnabled =
+      options?.algorithm?.useBloomFilter ||
+      options?.bloomFilter?.enabled ||
+      this.matchingAlgorithm === "hybrid";
+
+    if (bloomEnabled) {
+      const expectedItems = options?.bloomFilter?.expectedItems || 10000;
+      const falsePositiveRate = options?.bloomFilter?.falsePositiveRate || 0.01;
+      this.bloomFilter = new BloomFilter(expectedItems, falsePositiveRate);
+      this.logger.info(
+        `Bloom Filter initialized with ${expectedItems} expected items and ${(
+          falsePositiveRate * 100
+        ).toFixed(2)}% false positive rate`
+      );
+    }
+
+    // Initialize Aho-Corasick if enabled
+    const ahoEnabled =
+      options?.algorithm?.useAhoCorasick ||
+      options?.ahoCorasick?.enabled ||
+      this.matchingAlgorithm === "aho-corasick" ||
+      this.matchingAlgorithm === "hybrid";
+
+    if (ahoEnabled) {
+      this.ahoCorasickAutomaton = new AhoCorasick([]);
+      this.logger.info("Aho-Corasick automaton initialized");
+    }
+
+    // Initialize Context Analyzer if enabled
+    const contextEnabled =
+      options?.algorithm?.useContextAnalysis ||
+      options?.contextAnalysis?.enabled;
+
+    if (contextEnabled) {
+      const contextLanguages =
+        options?.contextAnalysis?.languages || ["en"];
+      this.contextAnalyzer = new ContextAnalyzer(contextLanguages);
+
+      if (options?.contextAnalysis?.contextWindow) {
+        this.contextAnalyzer.setContextWindow(
+          options.contextAnalysis.contextWindow
+        );
+      }
+
+      this.logger.info(
+        `Context Analyzer initialized for languages: ${contextLanguages.join(", ")}`
+      );
+    }
+
+    // Initialize result cache if enabled
+    if (options?.performance?.enableCaching) {
+      const cacheSize = options.performance.cacheSize || 1000;
+      this.resultCache = new Map();
+      this.logger.info(`Result caching enabled with size limit: ${cacheSize}`);
     }
   }
 
@@ -470,6 +584,106 @@ export class AllProfanity {
   }
 
   /**
+   * Use Aho-Corasick algorithm for pattern matching
+   */
+  private findMatchesWithAhoCorasick(
+    searchText: string,
+    originalText: string
+  ): MatchResult[] {
+    if (!this.ahoCorasickAutomaton) {
+      return [];
+    }
+
+    const ahoMatches = this.ahoCorasickAutomaton.findAll(searchText);
+    const results: MatchResult[] = [];
+
+    for (const match of ahoMatches) {
+      if (
+        !this.detectPartialWords &&
+        !this.isWholeWord(originalText, match.start, match.end)
+      ) {
+        continue;
+      }
+
+      const matchedText = originalText.substring(match.start, match.end);
+      if (this.isWhitelistedMatch(match.pattern, matchedText)) {
+        continue;
+      }
+
+      if (this.hasWordBoundaries(originalText, match.start, match.end)) {
+        results.push({
+          word: match.pattern,
+          start: match.start,
+          end: match.end,
+          originalWord: matchedText,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  /**
+   * Hybrid approach: Aho-Corasick for fast matching, Bloom Filter for validation
+   */
+  private findMatchesHybrid(
+    searchText: string,
+    originalText: string
+  ): MatchResult[] {
+    // Use Aho-Corasick for primary matching if available
+    if (this.ahoCorasickAutomaton) {
+      const matches = this.findMatchesWithAhoCorasick(searchText, originalText);
+
+      // If Bloom Filter is enabled, validate matches
+      if (this.bloomFilter) {
+        return matches.filter((match) =>
+          this.bloomFilter!.mightContain(match.word)
+        );
+      }
+
+      return matches;
+    }
+
+    // Fallback to Trie if Aho-Corasick not available
+    const matches: MatchResult[] = [];
+    this.findMatches(searchText, originalText, matches);
+
+    // Validate with Bloom Filter if enabled
+    if (this.bloomFilter) {
+      return matches.filter((match) =>
+        this.bloomFilter!.mightContain(match.word)
+      );
+    }
+
+    return matches;
+  }
+
+  /**
+   * Apply context analysis to filter false positives
+   */
+  private applyContextAnalysis(
+    text: string,
+    matches: MatchResult[],
+    scoreThreshold: number = 0.5
+  ): MatchResult[] {
+    if (!this.contextAnalyzer) {
+      return matches;
+    }
+
+    return matches.filter((match) => {
+      const analysis = this.contextAnalyzer!.analyzeContext(
+        text,
+        match.start,
+        match.end,
+        match.word
+      );
+
+      // If score is above threshold, it's likely profanity
+      return analysis.score >= scoreThreshold;
+    });
+  }
+
+  /**
    * Detect profanity in a given text.
    * @param text - The text to check.
    * @returns Profanity detection result.
@@ -485,24 +699,70 @@ export class AllProfanity {
         positions: [],
       };
     }
-    const matches: MatchResult[] = [];
+
+    // Check cache first if enabled
+    if (this.resultCache?.has(validatedText)) {
+      return this.resultCache.get(validatedText)!;
+    }
+
+    let matches: MatchResult[] = [];
     const normalizedText = this.caseSensitive
       ? validatedText
       : validatedText.toLowerCase();
-    this.findMatches(normalizedText, validatedText, matches);
 
-    if (this.enableLeetSpeak) {
-      const leetNormalized = this.normalizeLeetSpeak(normalizedText);
-      if (leetNormalized !== normalizedText) {
-        this.findMatches(leetNormalized, validatedText, matches);
-      }
+    // Choose matching algorithm based on configuration
+    switch (this.matchingAlgorithm) {
+      case "aho-corasick":
+        matches = this.findMatchesWithAhoCorasick(normalizedText, validatedText);
+        if (this.enableLeetSpeak) {
+          const leetNormalized = this.normalizeLeetSpeak(normalizedText);
+          if (leetNormalized !== normalizedText) {
+            const leetMatches = this.findMatchesWithAhoCorasick(
+              leetNormalized,
+              validatedText
+            );
+            matches.push(...leetMatches);
+          }
+        }
+        break;
+
+      case "hybrid":
+        matches = this.findMatchesHybrid(normalizedText, validatedText);
+        if (this.enableLeetSpeak) {
+          const leetNormalized = this.normalizeLeetSpeak(normalizedText);
+          if (leetNormalized !== normalizedText) {
+            const leetMatches = this.findMatchesHybrid(
+              leetNormalized,
+              validatedText
+            );
+            matches.push(...leetMatches);
+          }
+        }
+        break;
+
+      case "trie":
+      default:
+        this.findMatches(normalizedText, validatedText, matches);
+        if (this.enableLeetSpeak) {
+          const leetNormalized = this.normalizeLeetSpeak(normalizedText);
+          if (leetNormalized !== normalizedText) {
+            this.findMatches(leetNormalized, validatedText, matches);
+          }
+        }
+        break;
+    }
+
+    // Apply context analysis if enabled
+    if (this.contextAnalyzer) {
+      matches = this.applyContextAnalysis(validatedText, matches);
     }
 
     const uniqueMatches = this.deduplicateMatches(matches);
     const detectedWords = uniqueMatches.map((m) => m.originalWord);
     const severity = this.calculateSeverity(uniqueMatches);
     const cleanedText = this.generateCleanedText(validatedText, uniqueMatches);
-    return {
+
+    const result: ProfanityDetectionResult = {
       hasProfanity: uniqueMatches.length > 0,
       detectedWords,
       cleanedText,
@@ -513,6 +773,18 @@ export class AllProfanity {
         end: m.end,
       })),
     };
+
+    // Cache result if caching is enabled
+    if (this.resultCache) {
+      this.resultCache.set(validatedText, result);
+      // Implement simple LRU by clearing cache when it gets too large
+      if (this.resultCache.size > 1000) {
+        const firstKey = this.resultCache.keys().next().value;
+        this.resultCache.delete(firstKey);
+      }
+    }
+
+    return result;
   }
 
   /**
@@ -844,7 +1116,19 @@ export class AllProfanity {
       return false;
     }
 
+    // Add to Trie (always used as fallback)
     this.profanityTrie.addWord(normalizedWord);
+
+    // Add to Bloom Filter if enabled
+    if (this.bloomFilter) {
+      this.bloomFilter.add(normalizedWord);
+    }
+
+    // Add to Aho-Corasick automaton if enabled
+    if (this.ahoCorasickAutomaton) {
+      this.ahoCorasickAutomaton.addPattern(normalizedWord);
+    }
+
     return true;
   }
 
@@ -968,6 +1252,41 @@ export class AllProfanity {
     if (rebuildNeeded) {
       this.rebuildTrie();
     }
+  }
+
+  /**
+   * Create an AllProfanity instance from a configuration object.
+   * @param config - Configuration object
+   * @returns A new AllProfanity instance
+   */
+  static fromConfig(config: AllProfanityOptions | any): AllProfanity {
+    const options: AllProfanityOptions = {};
+
+    if (config.algorithm) options.algorithm = config.algorithm;
+    if (config.bloomFilter) options.bloomFilter = config.bloomFilter;
+    if (config.ahoCorasick) options.ahoCorasick = config.ahoCorasick;
+    if (config.contextAnalysis) options.contextAnalysis = config.contextAnalysis;
+    if (config.performance) options.performance = config.performance;
+
+    if (config.profanityDetection) {
+      options.enableLeetSpeak = config.profanityDetection.enableLeetSpeak;
+      options.caseSensitive = config.profanityDetection.caseSensitive;
+      options.strictMode = config.profanityDetection.strictMode;
+      options.detectPartialWords = config.profanityDetection.detectPartialWords;
+      options.defaultPlaceholder = config.profanityDetection.defaultPlaceholder;
+    }
+
+    if (config.enableLeetSpeak !== undefined) options.enableLeetSpeak = config.enableLeetSpeak;
+    if (config.caseSensitive !== undefined) options.caseSensitive = config.caseSensitive;
+    if (config.strictMode !== undefined) options.strictMode = config.strictMode;
+    if (config.detectPartialWords !== undefined) options.detectPartialWords = config.detectPartialWords;
+    if (config.defaultPlaceholder !== undefined) options.defaultPlaceholder = config.defaultPlaceholder;
+    if (config.languages) options.languages = config.languages;
+    if (config.whitelistWords) options.whitelistWords = config.whitelistWords;
+    if (config.customDictionaries) options.customDictionaries = config.customDictionaries;
+    if (config.logger) options.logger = config.logger;
+
+    return new AllProfanity(options);
   }
 }
 

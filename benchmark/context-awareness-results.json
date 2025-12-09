@@ -1,0 +1,87 @@
+{
+  "timestamp": "2025-12-04T19:30:39.957Z",
+  "totalTests": 11,
+  "accuracyWithoutContext": 45.45454545454545,
+  "accuracyWithContext": 100,
+  "falsePositivesReduced": 2,
+  "improvement": 54.54545454545455,
+  "testCases": [
+    {
+      "description": "Negation context",
+      "text": "This is not fucking around, it's serious work",
+      "withoutContext": true,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Negation with profanity",
+      "text": "I don't give a damn about that",
+      "withoutContext": false,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Attributive usage (emphasis)",
+      "text": "That was a damn good performance",
+      "withoutContext": false,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Positive attributive",
+      "text": "This is some badass coding",
+      "withoutContext": false,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Compound word containing 'ass'",
+      "text": "The assassin was caught yesterday",
+      "withoutContext": false,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Professional word containing 'ass'",
+      "text": "I need assistance with this problem",
+      "withoutContext": false,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Academic context",
+      "text": "The class assignment is due tomorrow",
+      "withoutContext": false,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Medical terminology",
+      "text": "The doctor examined the anal region",
+      "withoutContext": true,
+      "withContext": false,
+      "expected": false
+    },
+    {
+      "description": "Direct insult",
+      "text": "You're a fucking idiot",
+      "withoutContext": true,
+      "withContext": true,
+      "expected": true
+    },
+    {
+      "description": "Explicit profanity",
+      "text": "This is complete bullshit",
+      "withoutContext": true,
+      "withContext": true,
+      "expected": true
+    },
+    {
+      "description": "Direct attack",
+      "text": "Go to hell, asshole",
+      "withoutContext": true,
+      "withContext": true,
+      "expected": true
+    }
+  ]
+}

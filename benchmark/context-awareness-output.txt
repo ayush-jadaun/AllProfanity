@@ -1,0 +1,119 @@
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+🔍 Context Awareness & Accuracy Testing
+
+================================================================================
+This tests the ability to reduce false positives through context analysis
+================================================================================
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+[AllProfanity] Bloom Filter initialized with 10000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Context Analyzer initialized for languages: en
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+
+📊 Test Results:
+
+--------------------------------------------------------------------------------
+Test Case                              Without       With   Expected
+                                       Context    Context   Behavior
+--------------------------------------------------------------------------------
+Negation context                       FLAGGED      CLEAN ✅
+Negation with profanity                  CLEAN      CLEAN ✅
+Attributive usage (emphasis)             CLEAN      CLEAN ✅
+Positive attributive                     CLEAN      CLEAN ✅
+Compound word containing 'ass'           CLEAN      CLEAN ✅
+Professional word containing 'ass'       CLEAN      CLEAN ✅
+Academic context                         CLEAN      CLEAN ✅
+Medical terminology                    FLAGGED      CLEAN ✅
+Direct insult                          FLAGGED    FLAGGED ✅
+Explicit profanity                     FLAGGED    FLAGGED ✅
+Direct attack                          FLAGGED    FLAGGED ✅
+--------------------------------------------------------------------------------
+
+📈 Accuracy Metrics:
+
+Total Test Cases: 11
+Without Context Analysis: 5/11 correct (45.5% accuracy)
+With Context Analysis:    11/11 correct (100.0% accuracy)
+False Positives Reduced:  2 (18.2%)
+
+Accuracy Improvement: +54.5%
+
+
+🔬 Detailed Analysis Examples:
+
+================================================================================
+
+Text: "The assassin was caught yesterday"
+--------------------------------------------------------------------------------
+
+Without Context Analysis:
+  Flagged: false
+
+With Context Analysis:
+  Flagged: false
+  ✅ Context analysis prevented false positive
+
+Text: "That was a damn good performance"
+--------------------------------------------------------------------------------
+
+Without Context Analysis:
+  Flagged: false
+
+With Context Analysis:
+  Flagged: false
+  ✅ Context analysis prevented false positive
+
+Text: "You're a fucking idiot"
+--------------------------------------------------------------------------------
+
+Without Context Analysis:
+  Flagged: true
+  Words found: fucking
+  Positions: [{"word":"fucking","start":9,"end":16}]
+
+With Context Analysis:
+  Flagged: true
+  Words found: fucking
+  Positions: [{"word":"fucking","start":9,"end":16}]
+
+Text: "I need assistance with this problem"
+--------------------------------------------------------------------------------
+
+Without Context Analysis:
+  Flagged: false
+
+With Context Analysis:
+  Flagged: false
+  ✅ Context analysis prevented false positive
+
+
+📚 Context Pattern Recognition:
+
+================================================================================
+
+Pattern Type           Example                                Result
+--------------------------------------------------------------------------------
+Negation             "This is not fucking acceptable     " ✅ CLEAN
+                     → Negation words reduce severity
+Attributive          "That's a damn good idea            " ✅ CLEAN
+                     → Used for emphasis, not insult
+Compound Word        "The class assignment is complete   " ✅ CLEAN
+                     → Part of legitimate word
+Professional         "I need assistance immediately      " ✅ CLEAN
+                     → Professional/formal context
+Clear Profanity      "You're such an asshole             " ⚠️ FLAGGED
+                     → Unambiguous hostile usage
+
+================================================================================
+✅ Context Awareness Testing Complete!
+
+💡 Key Insights:
+   - Context analysis reduces false positives from legitimate words
+   - Maintains detection of clear profanity in hostile contexts
+   - Understands negation, attribution, and professional usage
+   - Trade-off: ~10-30% slower but significantly more accurate
+
+📁 Results saved to: benchmark/context-awareness-results.json

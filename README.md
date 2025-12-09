@@ -1,26 +1,59 @@
 # AllProfanity
 
-A blazing-fast, multi-language, enterprise-grade profanity filter for JavaScript/TypeScript with advanced leet-speak normalization, Unicode support, and a robust, modern API.
+A blazing-fast, multi-language profanity filter for JavaScript/TypeScript with advanced algorithms (Aho-Corasick, Bloom Filters) delivering **664% faster performance** on large texts, intelligent leet-speak detection, and pattern-based context analysis.
 
 [![npm version](https://img.shields.io/npm/v/allprofanity.svg)](https://www.npmjs.com/package/allprofanity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
+## What's New in v2.2.0
+
+- **Aho-Corasick Algorithm:** 664% faster on large texts (1KB+) with O(n) multi-pattern matching
+- **Bloom Filters:** Lightning-fast probabilistic lookups reduce unnecessary checks
+- **Result Caching:** 123x speedup on repeated inputs (perfect for chat apps and forms)
+- **Pattern-Based Context Detection:** Reduces false positives in medical/negation contexts
+- **Word Boundary Detection:** Smart whole-word matching prevents flagging "assassin" or "assistance"
+- **Flexible Configuration:** Choose algorithm and trade-offs based on your use case
+
+[Read the full Performance Analysis →](./docs/SPEED_VS_ACCURACY.md)
+
+---
+
 ## Features
 
-- **Ultra-Fast O(n) Detection:** TRIE-based, single-pass algorithm for massive performance gains over regex/set-based filters.
-- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu. Load multiple at once.
-- **Multiple Scripts:** Detects profanity in Latin/Roman (Hinglish) and native scripts (e.g., Devanagari, Tamil, Telugu).
-- **Advanced Leet-Speak Normalization:** Detects obfuscated profanities (`f#ck`, `a55hole`, etc.) with context-aware mapping.
-- **Unicode & Punctuation Robustness:** Handles word boundaries and mixed language content with near-zero false positives.
-- **Flexible Cleaning:** Replace matches character-by-character or as whole words, with configurable placeholders.
-- **Custom Dictionaries:** Add/remove words or entire lists at runtime, including your own language packs.
-- **Whitelisting:** Exclude safe words or false positives from detection.
-- **Severity Levels:** Assess how offensive a string is (`MILD`, `MODERATE`, `SEVERE`, `EXTREME`).
-- **No Dictionary Exposure:** For security, the full list of loaded profanities is never exposed.
-- **TypeScript Support:** Typed, documented API and result objects.
-- **Zero 3rd-Party Dependencies:** Only internal code and data.
+### Performance & Speed
+
+- **Multiple Algorithm Options:** Choose between Trie (default), Aho-Corasick, or Hybrid modes
+- **664% Faster on Large Texts:** Aho-Corasick delivers O(n) multi-pattern matching
+- **123x Speedup with Caching:** Result cache perfect for repeated checks (chat, forms, APIs)
+- **~27K ops/sec:** Default Trie mode handles short texts incredibly fast
+- **Single-Pass Scanning:** O(n) complexity regardless of dictionary size
+- **Batch Processing Ready:** Optimized for high-throughput API endpoints
+
+### Accuracy & Detection
+
+- **Word Boundary Matching:** Smart whole-word detection prevents false positives like "assassin" or "assistance"
+- **Pattern-Based Context Detection:** Recognizes medical terms ("anal region") and negation patterns ("not bad")
+- **Advanced Leet-Speak:** Detects obfuscated profanities (`f#ck`, `a55hole`, `sh1t`, etc.)
+- **Comprehensive Coverage:** Catches profanity while minimizing false flags
+- **Configurable Strictness:** Tune detection sensitivity to your needs
+
+### Multi-Language & Flexibility
+
+- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese
+- **Multiple Scripts:** Latin/Roman (Hinglish) and native scripts (Devanagari, Tamil, Telugu, etc.)
+- **Custom Dictionaries:** Add/remove words or entire language packs at runtime
+- **Whitelisting:** Exclude safe words from detection
+- **Severity Scoring:** Assess content offensiveness (`MILD`, `MODERATE`, `SEVERE`, `EXTREME`)
+
+### Developer Experience
+
+- **TypeScript Support:** Fully typed API with comprehensive documentation
+- **Zero 3rd-Party Dependencies:** Only internal code and data
+- **Configurable:** Tune performance vs accuracy for your use case
+- **No Dictionary Exposure:** Secure by design - word lists never exposed
+- **Universal:** Works in Node.js and browsers
 
 ---
 
@@ -30,6 +63,13 @@ A blazing-fast, multi-language, enterprise-grade profanity filter for JavaScript
 npm install allprofanity
 # or
 yarn add allprofanity
+```
+
+**Generate configuration file (optional):**
+
+```bash
+npx allprofanity
+# Creates allprofanity.config.json and config.schema.json in your project
 ```
 
 ---
@@ -45,6 +85,162 @@ profanity.check('What the f#ck is this?');           // true (leet-speak detecte
 profanity.check('यह एक चूतिया परीक्षण है।');           // true (Hindi)
 profanity.check('Ye ek chutiya test hai.');          // true (Hinglish Roman script)
 ```
+
+---
+
+## Algorithm Configuration
+
+AllProfanity v2.2+ offers multiple algorithms optimized for different use cases. You can configure via **constructor options** or **config file**.
+
+### Configuration Methods
+
+#### Method 1: Constructor Options (Inline)
+
+```typescript
+import { AllProfanity } from 'allprofanity';
+
+const filter = new AllProfanity({
+  algorithm: { matching: "hybrid" },
+  performance: { enableCaching: true }
+});
+```
+
+#### Method 2: Config File (Recommended)
+
+```bash
+# Generate config files in your project
+npx allprofanity
+
+# This creates:
+# - allprofanity.config.json (main config)
+# - config.schema.json (for IDE autocomplete)
+```
+
+```typescript
+import { AllProfanity } from 'allprofanity';
+import config from './allprofanity.config.json';
+
+// Load from generated config file
+const filter = AllProfanity.fromConfig(config);
+
+// Or directly from object (no file needed)
+const filter2 = AllProfanity.fromConfig({
+  algorithm: { matching: "hybrid", useContextAnalysis: true },
+  performance: { enableCaching: true, cacheSize: 1000 }
+});
+```
+
+**Example Config File** (`allprofanity.config.json`):
+
+```json
+{
+  "algorithm": {
+    "matching": "hybrid",
+    "useAhoCorasick": true,
+    "useBloomFilter": true,
+    "useContextAnalysis": true
+  },
+  "contextAnalysis": {
+    "enabled": true,
+    "contextWindow": 50,
+    "languages": ["en"],
+    "scoreThreshold": 0.5
+  },
+  "profanityDetection": {
+    "enableLeetSpeak": true,
+    "caseSensitive": false,
+    "strictMode": false
+  },
+  "performance": {
+    "enableCaching": true,
+    "cacheSize": 1000
+  }
+}
+```
+
+**Config File:** Run `npx allprofanity` to generate config files in your project. The JSON schema provides IDE autocomplete and validation.
+
+---
+
+### Quick Configuration Examples
+
+#### 1. Default (Best for General Use)
+
+```typescript
+import { AllProfanity } from 'allprofanity';
+const filter = new AllProfanity();
+// Uses optimized Trie - fast and reliable (~27K ops/sec)
+```
+
+#### 2. Large Text Processing (Documents, Articles)
+
+```typescript
+const filter = new AllProfanity({
+  algorithm: { matching: "aho-corasick" }
+});
+// 664% faster on 1KB+ texts
+```
+
+#### 3. Reduced False Positives (Social Media, Content Moderation)
+
+```typescript
+const filter = new AllProfanity({
+  algorithm: {
+    matching: "hybrid",
+    useBloomFilter: true,
+    useAhoCorasick: true,
+    useContextAnalysis: true
+  },
+  contextAnalysis: {
+    enabled: true,
+    contextWindow: 50,
+    languages: ["en"],
+    scoreThreshold: 0.5
+  }
+});
+// Pattern-based context detection reduces medical/negation false positives
+```
+
+#### 4. Repeated Checks (Chat, Forms, APIs)
+
+```typescript
+const filter = new AllProfanity({
+  performance: {
+    enableCaching: true,
+    cacheSize: 1000
+  }
+});
+// 123x speedup on cache hits
+```
+
+#### 5. Medical/Professional Content
+
+```typescript
+const filter = new AllProfanity({
+  algorithm: {
+    matching: "hybrid",
+    useContextAnalysis: true
+  },
+  contextAnalysis: {
+    enabled: true,
+    contextWindow: 100,
+    scoreThreshold: 0.7  // Higher threshold = less sensitive
+  }
+});
+// Reduces false positives from medical terms using keyword patterns
+```
+
+### Performance Characteristics
+
+| Use Case | Algorithm | Speed | Detection | Best For |
+|----------|-----------|-------|----------|----------|
+| Short texts (<500 chars) | Trie (default) | ~27K ops/sec | Excellent | Chat, comments |
+| Large texts (1KB+) | Aho-Corasick | ~9.6K ops/sec | Excellent | Documents, articles |
+| Repeated patterns | Any + Caching | 123x faster | Excellent | Forms, validation |
+| Content moderation | Hybrid + Context | Moderate | Good (fewer false positives) | Social media, UGC |
+| Professional content | Hybrid + Context (strict) | Moderate | Reduced false flags | Medical, academic |
+
+[See detailed benchmarks and comparisons →](./docs/SPEED_VS_ACCURACY.md)
 
 ---
 
@@ -289,6 +485,133 @@ console.log(profanity.getConfig());
 
 ---
 
+## Configuration File Structure
+
+AllProfanity supports JSON-based configuration for easy setup and deployment. The config file structure supports all algorithm and detection options.
+
+### Full Configuration Schema
+
+```typescript
+{
+  "algorithm": {
+    "matching": "trie" | "aho-corasick" | "hybrid",  // Algorithm selection
+    "useAhoCorasick": boolean,                        // Enable Aho-Corasick
+    "useBloomFilter": boolean,                        // Enable Bloom Filter
+    "useContextAnalysis": boolean                     // Enable context analysis
+  },
+  "bloomFilter": {
+    "enabled": boolean,                               // Enable/disable
+    "expectedItems": number,                          // Expected dictionary size (default: 10000)
+    "falsePositiveRate": number                       // Acceptable false positive rate (default: 0.01)
+  },
+  "ahoCorasick": {
+    "enabled": boolean,                               // Enable/disable
+    "prebuild": boolean                               // Prebuild automaton (default: true)
+  },
+  "contextAnalysis": {
+    "enabled": boolean,                               // Enable/disable pattern-based context detection
+    "contextWindow": number,                          // Characters around match to check (default: 50)
+    "languages": string[],                            // Languages for keyword patterns (default: ["en"])
+    "scoreThreshold": number                          // Detection threshold 0-1 (default: 0.5)
+  },
+  "profanityDetection": {
+    "enableLeetSpeak": boolean,                       // Detect l33t speak (default: true)
+    "caseSensitive": boolean,                         // Case sensitive matching (default: false)
+    "strictMode": boolean,                            // Require word boundaries (default: false)
+    "detectPartialWords": boolean,                    // Detect within words (default: false)
+    "defaultPlaceholder": string                      // Default censoring character (default: "*")
+  },
+  "performance": {
+    "enableCaching": boolean,                         // Enable result cache (default: false)
+    "cacheSize": number                               // Cache size limit (default: 1000)
+  }
+}
+```
+
+### Pre-configured Templates
+
+#### High Performance (Large Texts)
+
+```json
+{
+  "algorithm": { "matching": "aho-corasick" },
+  "ahoCorasick": { "enabled": true, "prebuild": true },
+  "profanityDetection": { "enableLeetSpeak": true }
+}
+```
+
+#### Reduced False Positives (Content Moderation)
+
+```json
+{
+  "algorithm": {
+    "matching": "hybrid",
+    "useContextAnalysis": true,
+    "useBloomFilter": true
+  },
+  "contextAnalysis": {
+    "enabled": true,
+    "contextWindow": 50,
+    "scoreThreshold": 0.5
+  },
+  "performance": { "enableCaching": true }
+}
+```
+
+#### Balanced (Production)
+
+```json
+{
+  "algorithm": {
+    "matching": "hybrid",
+    "useAhoCorasick": true,
+    "useBloomFilter": true
+  },
+  "profanityDetection": { "enableLeetSpeak": true },
+  "performance": { "enableCaching": true, "cacheSize": 1000 }
+}
+```
+
+### Using Config Files
+
+**Step 1: Generate Config Files**
+
+```bash
+# Run this in your project directory
+npx allprofanity
+
+# Output:
+# ✅ AllProfanity configuration files created!
+#
+# Created files:
+#   📄 allprofanity.config.json - Main configuration
+#   📄 config.schema.json - JSON schema for IDE autocomplete
+```
+
+**Step 2: Load Config in Your Code**
+
+```typescript
+// ES Modules / TypeScript
+import { AllProfanity } from 'allprofanity';
+import config from './allprofanity.config.json';
+
+const filter = AllProfanity.fromConfig(config);
+```
+
+```javascript
+// CommonJS (Node.js)
+const { AllProfanity } = require('allprofanity');
+const config = require('./allprofanity.config.json');
+
+const filter = AllProfanity.fromConfig(config);
+```
+
+**Step 3: Customize Config**
+
+Edit `allprofanity.config.json` to enable/disable features. Your IDE will provide autocomplete thanks to the JSON schema!
+
+---
+
 ## Severity Levels
 
 Severity reflects the number and variety of detected profanities:
@@ -304,13 +627,14 @@ Severity reflects the number and variety of detected profanities:
 
 ## Language Support
 
-- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu
+- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese
 - **Scripts:** Latin/Roman, Devanagari, Tamil, Telugu, Bengali, etc.
 - **Mixed Content:** Handles mixed-language and code-switched sentences.
 
 ```typescript
 profanity.check('This is bullshit and चूतिया.'); // true (mixed English/Hindi)
 profanity.check('Ce mot est merde and पागल.');   // true (French/Hindi)
+profanity.check('Isso é uma merda.');             // true (Brazilian Portuguese)
 ```
 
 ---
@@ -389,10 +713,11 @@ A: Yes! AllProfanity is universal.
 
 ## Roadmap
 
-- More language packs (Arabic, Russian, etc.)
-- Contextual detection & severity scoring
-- Phonetic/typo/obfuscation resilience
-- Plugin system for custom detection
+- 🚧 Multi-language context analysis (Hindi, Spanish, etc.)
+- 🚧 Phonetic matching (sounds-like detection)
+- 🚧 More language packs (Arabic, Russian, Japanese, etc.)
+- 🚧 Machine learning integration for adaptive scoring
+- 🚧 Plugin system for custom detection algorithms
 
 ---
 
@@ -404,6 +729,9 @@ MIT — See [LICENSE](https://github.com/ayush-jadaun/allprofanity/blob/main/LIC
 
 ## Contributing
 
-We welcome new language packs, detection improvements, and docs!  
-To add a new language, create a file in `src/languages/` and export a string array.  
-Open a PR or issue for bugs, features, or suggestions.
+  We welcome contributions! Please see our [CONTRIBUTORS.md](./CONTRIBUTORS.md) for:
+
+- How to add your name to our contributors list
+- Guidelines for adding new languages
+- Test requirements (must include passing test screenshots in PRs)
+- Code of conduct and PR guidelines

@@ -1,0 +1,176 @@
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+🔬 AllProfanity Algorithm Performance Comparison
+
+================================================================================
+
+📝 Test Case: Short profane
+   Text: "This is fucking bullshit"
+--------------------------------------------------------------------------------
+Algorithm                              Ops/sec        Avg Time
+--------------------------------------------------------------------------------
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+1. Trie (Baseline)                   25,836.54          0.0387ms
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+2. Aho-Corasick                      27,438.41          0.0364ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+3. Hybrid (Bloom + Aho)              27,140.58          0.0368ms
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+4. Trie + Caching                1,10,86,474.5          0.0001ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+5. Hybrid + Caching             1,36,68,671.41          0.0001ms
+
+📊 Relative Performance (vs Baseline):
+   2. Aho-Corasick: ↑ 6.2% faster
+   3. Hybrid (Bloom + Aho): ↑ 5.0% faster
+   4. Trie + Caching: ↑ 42810.1% faster
+   5. Hybrid + Caching: ↑ 52804.4% faster
+
+📝 Test Case: Medium profane
+   Text: "This is fucking bullshit and damn terrible goddamn..."
+--------------------------------------------------------------------------------
+Algorithm                              Ops/sec        Avg Time
+--------------------------------------------------------------------------------
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+1. Trie (Baseline)                   25,614.86          0.0390ms
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+2. Aho-Corasick                      24,852.17          0.0402ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+3. Hybrid (Bloom + Aho)              25,721.06          0.0389ms
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+4. Trie + Caching               8,07,75,444.26          0.0000ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+5. Hybrid + Caching             7,68,04,915.51          0.0000ms
+
+📊 Relative Performance (vs Baseline):
+   2. Aho-Corasick: ↓ 3.0% slower
+   3. Hybrid (Bloom + Aho): ↑ 0.4% faster
+   4. Trie + Caching: ↑ 315246.0% faster
+   5. Hybrid + Caching: ↑ 299745.2% faster
+
+📝 Test Case: Clean text
+   Text: "The quick brown fox jumps over the lazy dog"
+--------------------------------------------------------------------------------
+Algorithm                              Ops/sec        Avg Time
+--------------------------------------------------------------------------------
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+1. Trie (Baseline)                   27,124.43          0.0369ms
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+2. Aho-Corasick                      26,592.04          0.0376ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+3. Hybrid (Bloom + Aho)              28,024.79          0.0357ms
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+4. Trie + Caching               7,93,65,079.36          0.0000ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+5. Hybrid + Caching             7,97,44,816.59          0.0000ms
+
+📊 Relative Performance (vs Baseline):
+   2. Aho-Corasick: ↓ 2.0% slower
+   3. Hybrid (Bloom + Aho): ↑ 3.3% faster
+   4. Trie + Caching: ↑ 292496.3% faster
+   5. Hybrid + Caching: ↑ 293896.3% faster
+
+📝 Test Case: Long text (1K)
+   Text: "This is fucking bullshit. This is fucking bullshit..."
+--------------------------------------------------------------------------------
+Algorithm                              Ops/sec        Avg Time
+--------------------------------------------------------------------------------
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+1. Trie (Baseline)                    8,532.03          0.1172ms
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+2. Aho-Corasick                        9,619.2          0.1040ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+3. Hybrid (Bloom + Aho)               8,866.17          0.1128ms
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+4. Trie + Caching               7,22,54,335.26          0.0000ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Result caching enabled with size limit: 1000
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+5. Hybrid + Caching             7,92,39,302.69          0.0000ms
+
+📊 Relative Performance (vs Baseline):
+   2. Aho-Corasick: ↑ 12.7% faster
+   3. Hybrid (Bloom + Aho): ↑ 3.9% faster
+   4. Trie + Caching: ↑ 846759.8% faster
+   5. Hybrid + Caching: ↑ 928627.4% faster
+
+
+💾 Cache Performance Test
+================================================================================
+[AllProfanity] Result caching enabled with size limit: 100
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+   First call (not cached):  0.0495ms
+   Second call (cached):     0.0004ms
+   Speedup:                  123.8x faster
+
+
+📦 Batch Processing Test (1000 texts)
+================================================================================
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+1. Trie (Baseline)             Total: 41.72ms, Per text: 0.0417ms
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+2. Aho-Corasick                Total: 48.13ms, Per text: 0.0481ms
+[AllProfanity] Bloom Filter initialized with 1000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+3. Hybrid (Bloom + Aho)        Total: 45.86ms, Per text: 0.0459ms
+
+================================================================================
+✅ Benchmark completed successfully!
+
+💡 Recommendations:
+   - For general use: Trie (default) - simple and reliable
+   - For high throughput: Aho-Corasick - best for many patterns
+   - For production: Hybrid + Caching - best balance
+   - For repeated checks: Enable caching - massive speedup

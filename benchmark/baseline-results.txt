@@ -1,0 +1,131 @@
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+🚀 Starting AllProfanity Benchmark Suite
+Node Version: v22.13.1
+Platform: win32 x64
+
+🔍 Benchmarking: Simple Profanity Check
+
+🔍 Benchmarking: Detailed Detection
+
+🔍 Benchmarking: Text Cleaning
+
+🔍 Benchmarking: Multi-Language Detection
+[AllProfanity] Loaded 167 words from french dictionary
+[AllProfanity] Loaded 157 words from german dictionary
+[AllProfanity] Loaded 216 words from spanish dictionary
+[AllProfanity] Loaded 64 words from bengali dictionary
+
+🔍 Benchmarking: Large Text Processing
+
+🔍 Benchmarking: Dynamic Word Management
+
+🔍 Benchmarking: Whitelist Operations
+
+🔍 Benchmarking: Configuration Changes
+
+================================================================================
+📊 BENCHMARK RESULTS
+================================================================================
+
+Simple Profanity Check
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+check() - Clean text (short)                     31,220.53       0.0320        N/A
+check() - Single profanity                       29,133.79       0.0343     3.15MB
+check() - Multiple profanities                   26,227.39       0.0381     0.69MB
+check() - Clean text (medium)                    27,349.48       0.0366     3.30MB
+check() - Leet-speak profanity                   25,962.95       0.0385        N/A
+
+Suite Total Time: 1795.62ms (1.80s)
+
+Detailed Detection (detect method)
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+detect() - Clean text                            30,739.36       0.0325        N/A
+detect() - Multiple profanities                  26,013.82       0.0384     0.04MB
+detect() - Leet-speak                            26,287.43       0.0380        N/A
+detect() - Heavy profanity                       26,003.97       0.0385        N/A
+
+Suite Total Time: 737.35ms (0.74s)
+
+Text Cleaning Operations
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+clean() - Character replacement                  27,161.72       0.0368     2.22MB
+clean() - Custom placeholder                     26,967.68       0.0371     1.43MB
+cleanWithPlaceholder() - Word replacement        24,562.14       0.0407     1.26MB
+cleanWithPlaceholder() - Custom word             25,582.89       0.0391     0.93MB
+
+Suite Total Time: 768.50ms (0.77s)
+
+Multi-Language Detection
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+check() - English                                30,407.93       0.0329        N/A
+check() - Hindi (Devanagari)                     27,215.82       0.0367        N/A
+check() - Hinglish (Roman)                       29,238.23       0.0342     0.64MB
+check() - French                                 28,012.38       0.0357     0.17MB
+check() - German                                 30,022.22       0.0333        N/A
+check() - Spanish                                30,051.78       0.0333        N/A
+check() - Mixed languages                        26,041.46       0.0384        N/A
+
+Suite Total Time: 1222.57ms (1.22s)
+
+Large Text Processing
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+detect() - Clean text (500 chars)                14,904.32       0.0671        N/A
+detect() - Profane text (500 chars)              16,899.84       0.0592        N/A
+detect() - Clean text (2.5K chars)                4,898.14       0.2042        N/A
+detect() - Profane text (2.5K chars)              5,655.42       0.1768     1.91MB
+detect() - Clean text (10K chars)                 1,501.36       0.6661     3.33MB
+detect() - Profane text (10K chars)               1,258.35       0.7947     7.10MB
+
+Suite Total Time: 1363.89ms (1.36s)
+
+Dynamic Word Management
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+add() - Adding 4 words                         4,04,792.75       0.0025     0.69MB
+check() - After adding custom words              27,777.55       0.0360        N/A
+remove() - Removing 4 words                    6,00,132.03       0.0017     0.60MB
+
+Suite Total Time: 184.14ms (0.18s)
+
+Whitelist Operations
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+addToWhitelist() - Adding 3 words             14,53,488.37       0.0007     0.54MB
+check() - With whitelisted words                 31,070.97       0.0322     3.05MB
+removeFromWhitelist() - Removing 3 words       3,96,086.66       0.0025     0.53MB
+
+Suite Total Time: 164.13ms (0.16s)
+
+Configuration Changes
+--------------------------------------------------------------------------------
+Test Name                                          Ops/sec     Avg (ms)     Memory
+--------------------------------------------------------------------------------
+check() - With leet-speak enabled                28,137.22       0.0355     1.93MB
+check() - With leet-speak disabled            10,02,064.25       0.0010        N/A
+check() - With case-sensitive mode            11,52,312.69       0.0009     6.33MB
+check() - With case-insensitive mode           9,16,960.09       0.0011        N/A
+check() - With strict mode enabled               11,14,529       0.0009     6.56MB
+check() - With strict mode disabled            8,63,200.06       0.0012        N/A
+
+Suite Total Time: 202.76ms (0.20s)
+
+================================================================================
+Grand Total Time: 6438.96ms (6.44s)
+================================================================================
+
+⏱️  Total benchmark execution time: 6.73s
+
+✅ Results exported to benchmark/results/benchmark-2025-12-04T15-54-53-831Z.json

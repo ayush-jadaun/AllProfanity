@@ -1,0 +1,35 @@
+{
+  "$schema": "./config.schema.json",
+  "algorithm": {
+    "matching": "hybrid",
+    "useAhoCorasick": true,
+    "useBloomFilter": true,
+    "useContextAnalysis": true
+  },
+  "bloomFilter": {
+    "enabled": true,
+    "expectedItems": 10000,
+    "falsePositiveRate": 0.01
+  },
+  "ahoCorasick": {
+    "enabled": true,
+    "prebuild": true
+  },
+  "contextAnalysis": {
+    "enabled": true,
+    "contextWindow": 50,
+    "languages": ["en"],
+    "scoreThreshold": 0.5
+  },
+  "profanityDetection": {
+    "enableLeetSpeak": true,
+    "caseSensitive": false,
+    "strictMode": false,
+    "detectPartialWords": false,
+    "defaultPlaceholder": "*"
+  },
+  "performance": {
+    "cacheSize": 1000,
+    "enableCaching": true
+  }
+}

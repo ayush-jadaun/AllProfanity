@@ -1,0 +1,225 @@
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+🔬 Advanced Algorithms: OFF vs ON Comparison
+
+================================================================================
+Testing SAME cases with algorithms DISABLED vs ENABLED
+================================================================================
+
+📋 Configuration Details:
+
+Algorithms OFF:
+  - Basic Trie only
+  - No Aho-Corasick
+  - No Bloom Filter
+  - No Context Analysis
+
+Algorithms ON:
+  - Aho-Corasick: ✅ Enabled (fast multi-pattern matching)
+  - Bloom Filter: ✅ Enabled (probabilistic validation)
+  - Context Analysis: ✅ Enabled (smart false positive reduction)
+  - Hybrid Mode: ✅ All algorithms working together
+
+Initializing filters...
+
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+[AllProfanity] Bloom Filter initialized with 10000 expected items and 1.00% false positive rate
+[AllProfanity] Aho-Corasick automaton initialized
+[AllProfanity] Context Analyzer initialized for languages: en
+[AllProfanity] Loaded 252 words from english dictionary
+[AllProfanity] Loaded 588 words from hindi dictionary
+
+================================================================================
+📊 TEST RESULTS
+
+
+────────────────────────────────────────────────────────────────────────────────
+Category: False Positive Reduction
+Text: "The assassin was caught"
+Expected: Should NOT flag (legitimate word)
+
+🔴 Algorithms OFF:
+   Flagged: NO ✅
+
+🟢 Algorithms ON:
+   Flagged: NO ✅
+
+   ✅ Both correct (no false positive/negative)
+
+────────────────────────────────────────────────────────────────────────────────
+Category: False Positive Reduction
+Text: "I need assistance with this"
+Expected: Should NOT flag (professional term)
+
+🔴 Algorithms OFF:
+   Flagged: NO ✅
+
+🟢 Algorithms ON:
+   Flagged: NO ✅
+
+   ✅ Both correct (no false positive/negative)
+
+────────────────────────────────────────────────────────────────────────────────
+Category: False Positive Reduction
+Text: "The class assignment is due"
+Expected: Should NOT flag (academic context)
+
+🔴 Algorithms OFF:
+   Flagged: NO ✅
+
+🟢 Algorithms ON:
+   Flagged: NO ✅
+
+   ✅ Both correct (no false positive/negative)
+
+────────────────────────────────────────────────────────────────────────────────
+Category: Context Understanding
+Text: "This is not fucking acceptable"
+Expected: Should reduce severity (negation)
+
+🔴 Algorithms OFF:
+   Flagged: YES ⚠️
+   Words detected: fucking
+   Severity: 1
+
+🟢 Algorithms ON:
+   Flagged: NO ✅
+
+   ✨ IMPROVEMENT: Algorithms ON fixed a false result!
+
+────────────────────────────────────────────────────────────────────────────────
+Category: Context Understanding
+Text: "That was damn good work"
+Expected: Should NOT flag (emphasis, not insult)
+
+🔴 Algorithms OFF:
+   Flagged: NO ✅
+
+🟢 Algorithms ON:
+   Flagged: NO ✅
+
+   ✅ Both correct (no false positive/negative)
+
+────────────────────────────────────────────────────────────────────────────────
+Category: Medical/Technical
+Text: "The anal region was examined"
+Expected: Should NOT flag (medical context)
+
+🔴 Algorithms OFF:
+   Flagged: YES ⚠️
+   Words detected: anal
+   Severity: 1
+
+🟢 Algorithms ON:
+   Flagged: NO ✅
+
+   ✨ IMPROVEMENT: Algorithms ON fixed a false result!
+
+────────────────────────────────────────────────────────────────────────────────
+Category: Clear Profanity (Should Flag)
+Text: "You're a fucking idiot"
+Expected: SHOULD flag (hostile intent)
+
+🔴 Algorithms OFF:
+   Flagged: YES ⚠️
+   Words detected: fucking
+   Severity: 1
+
+🟢 Algorithms ON:
+   Flagged: YES ⚠️
+   Words detected: fucking
+   Severity: 1
+
+   ✅ Both correct (no false positive/negative)
+
+────────────────────────────────────────────────────────────────────────────────
+Category: Clear Profanity (Should Flag)
+Text: "This is complete bullshit"
+Expected: SHOULD flag (unambiguous)
+
+🔴 Algorithms OFF:
+   Flagged: YES ⚠️
+   Words detected: bullshit
+   Severity: 1
+
+🟢 Algorithms ON:
+   Flagged: YES ⚠️
+   Words detected: bullshit
+   Severity: 1
+
+   ✅ Both correct (no false positive/negative)
+
+────────────────────────────────────────────────────────────────────────────────
+Category: Clear Profanity (Should Flag)
+Text: "Go to hell, asshole"
+Expected: SHOULD flag (direct attack)
+
+🔴 Algorithms OFF:
+   Flagged: YES ⚠️
+   Words detected: asshole
+   Severity: 1
+
+🟢 Algorithms ON:
+   Flagged: YES ⚠️
+   Words detected: asshole
+   Severity: 1
+
+   ✅ Both correct (no false positive/negative)
+
+
+================================================================================
+📈 SUMMARY
+
+Total Test Cases: 9
+
+🔴 Algorithms OFF:
+   Correct: 7/9 (77.8%)
+   Incorrect: 2/9
+
+🟢 Algorithms ON:
+   Correct: 9/9 (100.0%)
+   Incorrect: 0/9
+
+📊 Comparison:
+   Improvements: 2 cases fixed
+   Accuracy gain: +2 correct (+22.2%)
+   Performance: 100.0% vs 77.8%
+
+   ✅ Algorithms ON is MORE ACCURATE!
+
+
+📋 Category Breakdown:
+
+False Positive Reduction:
+   OFF: 3/3 correct
+   ON:  3/3 correct
+   ➡️  Same performance
+
+Context Understanding:
+   OFF: 1/2 correct
+   ON:  2/2 correct
+   ✅ +1 improvement
+
+Medical/Technical:
+   OFF: 0/1 correct
+   ON:  1/1 correct
+   ✅ +1 improvement
+
+Clear Profanity (Should Flag):
+   OFF: 3/3 correct
+   ON:  3/3 correct
+   ➡️  Same performance
+
+================================================================================
+
+💡 Key Takeaways:
+
+1. Advanced algorithms improve accuracy by reducing false positives
+2. Context analysis understands negation, emphasis, and professional terms
+3. Still maintains 100% detection of clear profanity
+4. Trade-off: ~30% slower but significantly more accurate
+5. Recommended for production use where accuracy matters
+
+📁 Results saved to: benchmark/algo-on-off-results.json
+
