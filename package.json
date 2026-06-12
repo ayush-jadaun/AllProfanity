@@ -71,6 +71,7 @@
     "CONTRIBUTORS.md"
   ],
   "bin": {
-    "allprofanity": "./bin/init.js"
+    "allprofanity": "./bin/init.js",
+    "allprofanity-mcp": "./bin/mcp.js"
   }
 }

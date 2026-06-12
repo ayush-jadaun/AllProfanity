@@ -423,6 +423,17 @@ export interface AllProfanityOptions {
      * @default true
      */
     separatedLetters?: boolean;
+
+    /**
+     * Detect unambiguous profanity stems embedded inside larger tokens
+     * ("sisfuck", "totalshitshow"). Applies only to a curated list of
+     * strong words that never occur in legitimate vocabulary, with built-in
+     * exceptions (Scunthorpe, mishit, snigger, ...), so "classic", "bass"
+     * and "Hitchcock" stay clean.
+     *
+     * @default true
+     */
+    embeddedWords?: boolean;
   };
 
   /**
@@ -629,6 +640,53 @@ const INVISIBLE_CHARS: ReadonlySet<string> = new Set([
 
 /** Symbols treated as single-character wildcards in masked words like "f*ck". @internal */
 const MASK_CHARS: ReadonlySet<string> = new Set(["*", "#", "@", "$", "%"]);
+
+/**
+ * Unambiguous profanity stems that are flagged even when embedded inside a
+ * larger token ("sisfuck", "totalshitshow"). Only words that essentially
+ * never occur inside legitimate vocabulary belong here — ambiguous stems
+ * like "ass" or "cock" (class, bass, Hitchcock, peacock) must stay
+ * whole-word matched.
+ *
+ * @internal
+ */
+const EMBEDDED_STRONG_STEMS: readonly string[] = [
+  "fuck",
+  "shit",
+  "bitch",
+  "cunt",
+  "whore",
+  "nigger",
+  "nigga",
+  "faggot",
+  "wanker",
+  "chutiya",
+  "bhenchod",
+  "behenchod",
+  "madarchod",
+  "bhosdi",
+];
+
+/**
+ * Legitimate words that contain a strong stem and must never be flagged by
+ * the embedded pass (the user whitelist extends this set).
+ *
+ * @internal
+ */
+const EMBEDDED_SAFE_WORDS: ReadonlySet<string> = new Set([
+  "scunthorpe", // cunt
+  "mishit", // shit
+  "mishits",
+  "mishitting",
+  "shitake", // alt spelling of shiitake
+  "shitakes",
+  "matsushita", // Japanese surname/company
+  "takeshita", // Japanese surname
+  "snigger", // nigger
+  "sniggers",
+  "sniggered",
+  "sniggering",
+]);
 
 /**
  * Validates that an input is a non-empty string.
@@ -1028,6 +1086,7 @@ export class AllProfanity {
   private evasionRepeatedChars: boolean = true;
   private evasionMaskedChars: boolean = true;
   private evasionSeparatedLetters: boolean = true;
+  private evasionEmbeddedWords: boolean = true;
 
   private readonly availableLanguages: Record<string, string[]> = {
     english: englishBadWords || [],
@@ -1167,6 +1226,8 @@ export class AllProfanity {
       options?.evasionProtection?.maskedCharacters ?? true;
     this.evasionSeparatedLetters =
       options?.evasionProtection?.separatedLetters ?? true;
+    this.evasionEmbeddedWords =
+      options?.evasionProtection?.embeddedWords ?? true;
 
     if (options?.whitelistWords) {
       this.addToWhitelist(options.whitelistWords);
@@ -1602,6 +1663,64 @@ export class AllProfanity {
   }
 
   /**
+   * Find unambiguous profanity stems embedded inside larger tokens
+   * ("sisfuck", "totalshitshow"). Only stems from EMBEDDED_STRONG_STEMS that
+   * are currently in the dictionary are considered, and tokens listed in
+   * EMBEDDED_SAFE_WORDS or the whitelist never flag. The whole containing
+   * token is reported so cleaning masks all of it.
+   */
+  private findEmbeddedMatches(
+    searchText: string,
+    originalText: string
+  ): MatchResult[] {
+    const results: MatchResult[] = [];
+
+    for (const stem of EMBEDDED_STRONG_STEMS) {
+      // Respect remove()/clearList(): only flag stems still in the dictionary
+      const exact = this.profanityTrie
+        .findMatches(stem, 0, false)
+        .some((m) => m.end === stem.length);
+      if (!exact) continue;
+
+      let index = searchText.indexOf(stem);
+      while (index !== -1) {
+        // Expand to the containing token
+        let tokenStart = index;
+        let tokenEnd = index + stem.length;
+        while (tokenStart > 0 && /\w/.test(searchText[tokenStart - 1])) {
+          tokenStart--;
+        }
+        while (
+          tokenEnd < searchText.length &&
+          /\w/.test(searchText[tokenEnd])
+        ) {
+          tokenEnd++;
+        }
+
+        const token = searchText.substring(tokenStart, tokenEnd);
+        const isEmbedded = token !== stem; // exact tokens are the base pass's job
+        if (
+          isEmbedded &&
+          !EMBEDDED_SAFE_WORDS.has(token.toLowerCase()) &&
+          !this.isWhitelisted(token) &&
+          !this.isWhitelistedMatch(stem, token)
+        ) {
+          results.push({
+            word: stem,
+            start: tokenStart,
+            end: tokenEnd,
+            originalWord: originalText.substring(tokenStart, tokenEnd),
+          });
+        }
+
+        index = searchText.indexOf(stem, tokenEnd);
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Check if a match is bounded by word boundaries (strict mode).
    * @param text - The text.
    * @param start - Start index.
@@ -1931,6 +2050,9 @@ export class AllProfanity {
         ...this.findSeparatedMatches(normalizedText, validatedText)
       );
     }
+    if (this.evasionEmbeddedWords) {
+      matches.push(...this.findEmbeddedMatches(normalizedText, validatedText));
+    }
 
     // Apply context analysis if enabled
     if (this.contextAnalyzer) {
@@ -2119,6 +2241,12 @@ export class AllProfanity {
     if (
       this.evasionSeparatedLetters &&
       this.findSeparatedMatches(normalizedText, validatedText).length > 0
+    ) {
+      return true;
+    }
+    if (
+      this.evasionEmbeddedWords &&
+      this.findEmbeddedMatches(normalizedText, validatedText).length > 0
     ) {
       return true;
     }

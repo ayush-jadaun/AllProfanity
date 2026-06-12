@@ -1,0 +1,22 @@
+{
+  "name": "nextjs-moderated-comments",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Next.js comment form with AllProfanity server-side moderation",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "allprofanity": "file:../..",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.0.0"
+  }
+}

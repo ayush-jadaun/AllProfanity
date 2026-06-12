@@ -1,0 +1,164 @@
+:root {
+  --bg: #0f1115;
+  --panel: #181c24;
+  --border: #2a3040;
+  --text: #e8eaf0;
+  --muted: #8b93a7;
+  --accent: #4f8cff;
+  --ok: #2ecc71;
+  --warn: #f0a93b;
+  --bad: #ef5350;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.55;
+}
+
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 48px 20px 80px;
+}
+
+h1 {
+  font-size: 1.7rem;
+  margin: 0 0 4px;
+}
+
+.subtitle {
+  color: var(--muted);
+  margin: 0 0 32px;
+  font-size: 0.95rem;
+}
+
+.subtitle code {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.85em;
+}
+
+form {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: grid;
+  gap: 6px;
+}
+
+input,
+textarea {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font: inherit;
+  resize: vertical;
+}
+
+input:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+button {
+  justify-self: start;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.banner {
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  border: 1px solid;
+}
+
+.banner.accepted {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.banner.cleaned {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.banner.rejected {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.comments {
+  margin-top: 40px;
+  display: grid;
+  gap: 12px;
+}
+
+.comment {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.comment-meta {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.comment-name {
+  font-weight: 600;
+}
+
+.comment-time {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.tag {
+  font-size: 0.7rem;
+  color: var(--warn);
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.comment-text {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

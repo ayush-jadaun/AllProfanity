@@ -66,6 +66,7 @@ Against **obscenity** — the only library close on detection — allprofanity i
 - **Advanced Leet-Speak:** Detects obfuscated profanities (`a55hole`, `sh1t`, `b!tch`, etc.)
 - **Masked-Character Wildcards:** Resolves `f*ck`, `f#ck`, `f@ck` — without flagging `c#`, `5% off`, or email addresses
 - **Stretched & Separated Letters:** Catches `fuuuuck`, `f u c k`, `f.u.c.k` while leaving "U S A" and "hmmmm" alone
+- **Embedded Strong Words:** Catches profanity glued into non-words (`sisfuck`, `totalshitshow`) for a curated list of unambiguous stems — with built-in exceptions so "Scunthorpe", "mishit" and "snigger" never flag
 - **Unicode Evasion Folding:** Fullwidth forms (`ｆｕｃｋ`), Cyrillic/Greek homoglyphs (`fυck`, `bаstard`), diacritics (`fück`), and zero-width/invisible character injection
 - **Position-Accurate Cleaning:** Every match maps back to the exact span in the original text, however it was obfuscated
 - **Configurable Strictness:** Each evasion pass can be toggled independently via `evasionProtection`
@@ -783,6 +784,38 @@ A: Use `clearList()` and reload languages/dictionaries.
 
 **Q: Is this safe for browser and Node.js?**  
 A: Yes! AllProfanity is universal.
+
+---
+
+## Use with AI Agents (MCP Server)
+
+AllProfanity ships a built-in [Model Context Protocol](https://modelcontextprotocol.io) server, so any MCP-capable agent (Claude Code, Claude Desktop, Cursor, custom agents) can check, analyze and clean text with zero integration code — and zero extra dependencies.
+
+**Claude Code:**
+
+```bash
+claude mcp add allprofanity -- npx -y -p allprofanity allprofanity-mcp
+```
+
+**Claude Desktop / generic MCP config:**
+
+```json
+{
+  "mcpServers": {
+    "allprofanity": {
+      "command": "npx",
+      "args": ["-y", "-p", "allprofanity", "allprofanity-mcp"],
+      "env": {
+        "ALLPROFANITY_LANGUAGES": "french,german,spanish"
+      }
+    }
+  }
+}
+```
+
+**Exposed tools:** `check_profanity`, `detect_profanity` (positions + severity + cleaned text), `clean_profanity` (character or word mode), `add_words`, `add_to_whitelist`, `load_language`, `list_languages`, and `get_documentation` — agents can read this README and the preset guide directly through the server (also exposed as MCP resources), so they can learn how to integrate and configure the library on their own.
+
+**Configuration:** set `ALLPROFANITY_LANGUAGES` (comma-separated) to preload languages, or `ALLPROFANITY_CONFIG` to the path of an `allprofanity.config.json` (any [preset](./examples-config/) works).
 
 ---
 
