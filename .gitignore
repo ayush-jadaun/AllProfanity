@@ -49,3 +49,4 @@ benchmark-results/
 # Demo files
 demo/
 src/demo.ts
+dist-bench/

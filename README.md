@@ -10,8 +10,8 @@ The most evasion-resistant multi-language profanity filter for JavaScript/TypeSc
 ## What's New in v2.3.0
 
 - **Evasion protection suite:** masked characters (`f*ck`, `f#ck`, `f@ck`), stretched letters (`fuuuuck`), separated letters (`f u c k`, `f.u.c.k`), and a Unicode folding pass (fullwidth forms, Cyrillic/Greek homoglyphs, diacritics, zero-width/invisible characters) — all on by default, all individually configurable
-- **Early-exit `check()`:** boolean checks stop at the first confirmed match — profane text now checks up to ~60× faster than v2.2
-- **8× faster leet-speak engine:** the normalizer was rewritten with first-character bucketing and an ASCII fast path
+- **Early-exit `check()`:** boolean checks stop at the first confirmed match — a 20k-word profane document that took v2.2.1 ~24 ms now checks in ~0.01 ms
+- **8× faster leet-speak engine vs v2.2.1:** the normalizer was rewritten with first-character bucketing and an ASCII fast path — a 100 KB clean document dropped from ~24 ms to ~3 ms per scan
 - **Position-accurate everywhere:** matches found through any normalization (leet, Unicode, collapse) now report exact positions in the *original* string, so cleaning masks exactly the evasive text
 - **Hardened core:** `remove()`/`clearList()` now reach the Aho-Corasick automaton, the result cache is truly LRU and invalidates on every mutation, `contextAnalysis.scoreThreshold` and `ahoCorasick.prebuild` are honored, and importing the library no longer writes to the console
 - **`ProfanitySeverity.NONE` (0):** clean text now reports `NONE` instead of `MILD`
@@ -40,11 +40,11 @@ The battery covers plain profanity, leet-speak (`sh1t`, `a55hole`, `b@stard`), m
 
 | Input | allprofanity | leo-profanity | bad-words | obscenity | @2toad |
 |---|---|---|---|---|---|
-| Short message (10 words) | 0.001 | 0.001 | 0.351 | 0.019 | 0.001 |
-| Large text, profane (20k words) | **0.008** | 0.473 | 13.1 | 12.5 | 0.009 |
-| Large text, clean (20k words) | 2.76 | 0.75 | 14.4 | 13.2 | 0.25 |
+| Short message (10 words) | 0.001 | 0.001 | 0.356 | 0.017 | 0.001 |
+| Large text, profane (20k words) | **0.013** | 0.449 | 15.1 | 11.3 | 0.041 |
+| Large text, clean (20k words) | 3.20 | 0.75 | 13.2 | 14.6 | 0.29 |
 
-Against **obscenity** — the only library close on detection — allprofanity is ~5× faster on clean text and over 1000× faster on profane text, with better detection and zero false positives. The thin word-list filters (leo-profanity, @2toad) are faster on clean throughput but miss half to two-thirds of the evasion battery.
+Against **obscenity** — the only library close on detection — allprofanity is ~4.5× faster on clean text and ~870× faster on profane text, with better detection and zero false positives. The thin word-list filters (leo-profanity, @2toad) are faster on clean throughput but miss half to two-thirds of the evasion battery.
 
 ---
 
@@ -53,9 +53,9 @@ Against **obscenity** — the only library close on detection — allprofanity i
 ### Performance & Speed
 
 - **Multiple Algorithm Options:** Choose between Trie (default), Aho-Corasick, or Hybrid modes
-- **664% Faster on Large Texts:** Aho-Corasick delivers O(n) multi-pattern matching
-- **123x Speedup with Caching:** Result cache perfect for repeated checks (chat, forms, APIs)
-- **~27K ops/sec:** Default Trie mode handles short texts incredibly fast
+- **300K+ ops/sec on short texts:** default Trie mode (chat-message-sized inputs, measured on the comparison benchmark hardware); profane text exits early at 1M+ ops/sec
+- **O(1) Cached Repeats:** LRU result cache turns repeated checks into map lookups — 25× (short texts) to 6,500× (large texts) faster than the same uncached call
+- **Aho-Corasick Option:** single-pass multi-pattern matching whose cost stays flat as your dictionary grows (vs the Trie's per-position scanning)
 - **Single-Pass Scanning:** O(n) complexity regardless of dictionary size
 - **Batch Processing Ready:** Optimized for high-throughput API endpoints
 
@@ -226,7 +226,7 @@ const filter2 = AllProfanity.fromConfig({
 ```typescript
 import { AllProfanity } from 'allprofanity';
 const filter = new AllProfanity();
-// Uses optimized Trie - fast and reliable (~27K ops/sec)
+// Uses optimized Trie - fast and reliable (300K+ ops/sec on short texts)
 ```
 
 #### 2. Large Text Processing (Documents, Articles)
@@ -235,7 +235,8 @@ const filter = new AllProfanity();
 const filter = new AllProfanity({
   algorithm: { matching: "aho-corasick" }
 });
-// 664% faster on 1KB+ texts
+// Single-pass scanning that stays flat as the dictionary grows;
+// prebuild pays the compile cost at startup instead of the first request
 ```
 
 #### 3. Reduced False Positives (Social Media, Content Moderation)
@@ -267,7 +268,8 @@ const filter = new AllProfanity({
     cacheSize: 1000
   }
 });
-// 123x speedup on cache hits
+// O(1) on cache hits - 25x to 6,500x faster than the same uncached
+// detect() call, depending on text size (short message vs 20k words)
 ```
 
 #### 5. Tuning Evasion Protection
@@ -307,9 +309,11 @@ const filter = new AllProfanity({
 
 | Use Case | Algorithm | Speed | Detection | Best For |
 |----------|-----------|-------|----------|----------|
-| Short texts (<500 chars) | Trie (default) | ~27K ops/sec | Excellent | Chat, comments |
-| Large texts (1KB+) | Aho-Corasick | ~9.6K ops/sec | Excellent | Documents, articles |
-| Repeated patterns | Any + Caching | 123x faster | Excellent | Forms, validation |
+| Short texts (<500 chars) | Trie (default) | 300K+ ops/sec | Excellent | Chat, comments |
+| Large texts (20KB+) | Trie or Aho-Corasick | ~3 ms/check (clean), ~0.01 ms (profane, early exit) | Excellent | Documents, articles |
+| Repeated patterns | Any + Caching | O(1) — 25× to 6,500× faster than uncached | Excellent | Forms, validation |
+
+All numbers measured with [`benchmark/compare-libraries.mjs`](./benchmark/compare-libraries.mjs) and `npm run benchmark` (Node 22, Windows x64); baselines are v2.2.1 for version-to-version claims and the named library for cross-library claims. Re-run them yourself — results vary with hardware.
 | Content moderation | Hybrid + Context | Moderate | Good (fewer false positives) | Social media, UGC |
 | Professional content | Hybrid + Context (strict) | Moderate | Reduced false flags | Medical, academic |
 

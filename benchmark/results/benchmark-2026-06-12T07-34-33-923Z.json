@@ -1,0 +1,360 @@
+{
+  "timestamp": "2026-06-12T07:34:33.924Z",
+  "node_version": "v22.13.1",
+  "platform": "win32",
+  "arch": "x64",
+  "results": [
+    {
+      "suiteName": "Simple Profanity Check",
+      "results": [
+        {
+          "name": "check() - Clean text (short)",
+          "operations": 10000,
+          "totalTime": 28.97,
+          "avgTime": 0.0029,
+          "opsPerSecond": 345190.63,
+          "memoryUsed": 353544
+        },
+        {
+          "name": "check() - Single profanity",
+          "operations": 10000,
+          "totalTime": 7.79,
+          "avgTime": 0.0008,
+          "opsPerSecond": 1283664.09,
+          "memoryUsed": 1665648
+        },
+        {
+          "name": "check() - Multiple profanities",
+          "operations": 10000,
+          "totalTime": 1.17,
+          "avgTime": 0.0001,
+          "opsPerSecond": 8553588.23,
+          "memoryUsed": 1944136
+        },
+        {
+          "name": "check() - Clean text (medium)",
+          "operations": 10000,
+          "totalTime": 32.26,
+          "avgTime": 0.0032,
+          "opsPerSecond": 309945.85,
+          "memoryUsed": 192232
+        },
+        {
+          "name": "check() - Leet-speak profanity",
+          "operations": 10000,
+          "totalTime": 42.09,
+          "avgTime": 0.0042,
+          "opsPerSecond": 237561.86,
+          "memoryUsed": 1844280
+        }
+      ],
+      "totalTime": 112.28
+    },
+    {
+      "suiteName": "Detailed Detection (detect method)",
+      "results": [
+        {
+          "name": "detect() - Clean text",
+          "operations": 5000,
+          "totalTime": 14.94,
+          "avgTime": 0.003,
+          "opsPerSecond": 334569.01,
+          "memoryUsed": 887480
+        },
+        {
+          "name": "detect() - Multiple profanities",
+          "operations": 5000,
+          "totalTime": 34.55,
+          "avgTime": 0.0069,
+          "opsPerSecond": 144729.95,
+          "memoryUsed": 1156136
+        },
+        {
+          "name": "detect() - Leet-speak",
+          "operations": 5000,
+          "totalTime": 45.82,
+          "avgTime": 0.0092,
+          "opsPerSecond": 109126.7,
+          "memoryUsed": 1350976
+        },
+        {
+          "name": "detect() - Heavy profanity",
+          "operations": 5000,
+          "totalTime": 29.38,
+          "avgTime": 0.0059,
+          "opsPerSecond": 170164.69,
+          "memoryUsed": 1101200
+        }
+      ],
+      "totalTime": 124.69
+    },
+    {
+      "suiteName": "Text Cleaning Operations",
+      "results": [
+        {
+          "name": "clean() - Character replacement",
+          "operations": 5000,
+          "totalTime": 22.76,
+          "avgTime": 0.0046,
+          "opsPerSecond": 219665.32,
+          "memoryUsed": 1187440
+        },
+        {
+          "name": "clean() - Custom placeholder",
+          "operations": 5000,
+          "totalTime": 30.71,
+          "avgTime": 0.0061,
+          "opsPerSecond": 162815.01,
+          "memoryUsed": 416624
+        },
+        {
+          "name": "cleanWithPlaceholder() - Word replacement",
+          "operations": 5000,
+          "totalTime": 34.4,
+          "avgTime": 0.0069,
+          "opsPerSecond": 145341.23,
+          "memoryUsed": 206432
+        },
+        {
+          "name": "cleanWithPlaceholder() - Custom word",
+          "operations": 5000,
+          "totalTime": 31.32,
+          "avgTime": 0.0063,
+          "opsPerSecond": 159627.11,
+          "memoryUsed": 1831016
+        }
+      ],
+      "totalTime": 119.19
+    },
+    {
+      "suiteName": "Multi-Language Detection",
+      "results": [
+        {
+          "name": "check() - English",
+          "operations": 5000,
+          "totalTime": 1.9,
+          "avgTime": 0.0004,
+          "opsPerSecond": 2636852.65,
+          "memoryUsed": 1501048
+        },
+        {
+          "name": "check() - Hindi (Devanagari)",
+          "operations": 5000,
+          "totalTime": 2.77,
+          "avgTime": 0.0006,
+          "opsPerSecond": 1802516.31,
+          "memoryUsed": 118944
+        },
+        {
+          "name": "check() - Hinglish (Roman)",
+          "operations": 5000,
+          "totalTime": 1.17,
+          "avgTime": 0.0002,
+          "opsPerSecond": 4268761.21,
+          "memoryUsed": 3520712
+        },
+        {
+          "name": "check() - French",
+          "operations": 5000,
+          "totalTime": 1.97,
+          "avgTime": 0.0004,
+          "opsPerSecond": 2536912.07,
+          "memoryUsed": 4040560
+        },
+        {
+          "name": "check() - German",
+          "operations": 5000,
+          "totalTime": 1.55,
+          "avgTime": 0.0003,
+          "opsPerSecond": 3228931.22,
+          "memoryUsed": 3521256
+        },
+        {
+          "name": "check() - Spanish",
+          "operations": 5000,
+          "totalTime": 1.54,
+          "avgTime": 0.0003,
+          "opsPerSecond": 3248440.75,
+          "memoryUsed": 3530352
+        },
+        {
+          "name": "check() - Mixed languages",
+          "operations": 5000,
+          "totalTime": 1.97,
+          "avgTime": 0.0004,
+          "opsPerSecond": 2535625.54,
+          "memoryUsed": 3881456
+        }
+      ],
+      "totalTime": 12.87
+    },
+    {
+      "suiteName": "Large Text Processing",
+      "results": [
+        {
+          "name": "detect() - Clean text (500 chars)",
+          "operations": 2000,
+          "totalTime": 27.61,
+          "avgTime": 0.0138,
+          "opsPerSecond": 72433.59,
+          "memoryUsed": 17168
+        },
+        {
+          "name": "detect() - Profane text (500 chars)",
+          "operations": 2000,
+          "totalTime": 50.49,
+          "avgTime": 0.0252,
+          "opsPerSecond": 39615.65,
+          "memoryUsed": 3714104
+        },
+        {
+          "name": "detect() - Clean text (2.5K chars)",
+          "operations": 1000,
+          "totalTime": 70.22,
+          "avgTime": 0.0702,
+          "opsPerSecond": 14240.31,
+          "memoryUsed": 3800816
+        },
+        {
+          "name": "detect() - Profane text (2.5K chars)",
+          "operations": 1000,
+          "totalTime": 145.29,
+          "avgTime": 0.1453,
+          "opsPerSecond": 6882.94,
+          "memoryUsed": 2029072
+        },
+        {
+          "name": "detect() - Clean text (10K chars)",
+          "operations": 500,
+          "totalTime": 166.77,
+          "avgTime": 0.3335,
+          "opsPerSecond": 2998.21,
+          "memoryUsed": 2223584
+        },
+        {
+          "name": "detect() - Profane text (10K chars)",
+          "operations": 500,
+          "totalTime": 360.31,
+          "avgTime": 0.7206,
+          "opsPerSecond": 1387.69,
+          "memoryUsed": 15090688
+        }
+      ],
+      "totalTime": 820.69
+    },
+    {
+      "suiteName": "Dynamic Word Management",
+      "results": [
+        {
+          "name": "add() - Adding 4 words",
+          "operations": 1000,
+          "totalTime": 1.59,
+          "avgTime": 0.0016,
+          "opsPerSecond": 629287.02,
+          "memoryUsed": 734328
+        },
+        {
+          "name": "check() - After adding custom words",
+          "operations": 5000,
+          "totalTime": 2.22,
+          "avgTime": 0.0004,
+          "opsPerSecond": 2251136.82,
+          "memoryUsed": 3607216
+        },
+        {
+          "name": "remove() - Removing 4 words",
+          "operations": 1000,
+          "totalTime": 1.37,
+          "avgTime": 0.0014,
+          "opsPerSecond": 729075.53,
+          "memoryUsed": 637488
+        }
+      ],
+      "totalTime": 5.180000000000001
+    },
+    {
+      "suiteName": "Whitelist Operations",
+      "results": [
+        {
+          "name": "addToWhitelist() - Adding 3 words",
+          "operations": 1000,
+          "totalTime": 0.52,
+          "avgTime": 0.0005,
+          "opsPerSecond": 1936483.35,
+          "memoryUsed": 571488
+        },
+        {
+          "name": "check() - With whitelisted words",
+          "operations": 5000,
+          "totalTime": 15.02,
+          "avgTime": 0.003,
+          "opsPerSecond": 332803.07,
+          "memoryUsed": 6993040
+        },
+        {
+          "name": "removeFromWhitelist() - Removing 3 words",
+          "operations": 1000,
+          "totalTime": 0.26,
+          "avgTime": 0.0003,
+          "opsPerSecond": 3913894.32,
+          "memoryUsed": 568160
+        }
+      ],
+      "totalTime": 15.799999999999999
+    },
+    {
+      "suiteName": "Configuration Changes",
+      "results": [
+        {
+          "name": "check() - With leet-speak enabled",
+          "operations": 5000,
+          "totalTime": 13.48,
+          "avgTime": 0.0027,
+          "opsPerSecond": 371016.21,
+          "memoryUsed": 7863416
+        },
+        {
+          "name": "check() - With leet-speak disabled",
+          "operations": 5000,
+          "totalTime": 8.55,
+          "avgTime": 0.0017,
+          "opsPerSecond": 584494.53,
+          "memoryUsed": 12682640
+        },
+        {
+          "name": "check() - With case-sensitive mode",
+          "operations": 5000,
+          "totalTime": 8.06,
+          "avgTime": 0.0016,
+          "opsPerSecond": 620416.67,
+          "memoryUsed": 12201176
+        },
+        {
+          "name": "check() - With case-insensitive mode",
+          "operations": 5000,
+          "totalTime": 7.67,
+          "avgTime": 0.0015,
+          "opsPerSecond": 652060.51,
+          "memoryUsed": 12683136
+        },
+        {
+          "name": "check() - With strict mode enabled",
+          "operations": 5000,
+          "totalTime": 8.14,
+          "avgTime": 0.0016,
+          "opsPerSecond": 614310.99,
+          "memoryUsed": 12965016
+        },
+        {
+          "name": "check() - With strict mode disabled",
+          "operations": 5000,
+          "totalTime": 7.62,
+          "avgTime": 0.0015,
+          "opsPerSecond": 655892.54,
+          "memoryUsed": 12681480
+        }
+      ],
+      "totalTime": 53.52
+    }
+  ]
+}
