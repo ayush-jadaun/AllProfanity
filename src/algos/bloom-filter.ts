@@ -30,26 +30,26 @@ export class BloomFilter {
   }
 
   /**
-   * Hash function 1 (FNV-1a variant)
+   * Hash function 1 (FNV-1a, 32-bit)
    */
   private hash1(item: string): number {
     let hash = 2166136261;
     for (let i = 0; i < item.length; i++) {
       hash ^= item.charCodeAt(i);
-      hash *= 16777619;
+      hash = Math.imul(hash, 16777619);
     }
-    return Math.abs(hash) % this.size;
+    return (hash >>> 0) % this.size;
   }
 
   /**
-   * Hash function 2 (djb2 variant)
+   * Hash function 2 (djb2, 32-bit)
    */
   private hash2(item: string): number {
     let hash = 5381;
     for (let i = 0; i < item.length; i++) {
-      hash = (hash << 5) + hash + item.charCodeAt(i);
+      hash = (Math.imul(hash, 33) + item.charCodeAt(i)) | 0;
     }
-    return Math.abs(hash) % this.size;
+    return (hash >>> 0) % this.size;
   }
 
   /**

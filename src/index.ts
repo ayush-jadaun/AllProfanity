@@ -1,4 +1,4 @@
-// Language dictionaries imports
+﻿// Language dictionaries imports
 import englishBadWords from "./languages/english-words.js";
 import hindiBadWords from "./languages/hindi-words.js";
 import frenchBadWords from "./languages/french-words.js";
@@ -384,6 +384,48 @@ export interface AllProfanityOptions {
   };
 
   /**
+   * Evasion-protection configuration. All passes are enabled by default and
+   * only run when their trigger characters are present in the text, so they
+   * add near-zero cost on ordinary input.
+   */
+  evasionProtection?: {
+    /**
+     * Fold unicode evasion: fullwidth forms (ｆｕｃｋ), Cyrillic/Greek
+     * homoglyphs (fυck), diacritics (fück) and invisible characters
+     * (zero-width spaces, soft hyphens) injected inside words.
+     *
+     * @default true
+     */
+    unicode?: boolean;
+
+    /**
+     * Collapse stretched characters ("fuuuuck" -> "fuck"). Only triggers when
+     * a run of 3+ identical characters exists.
+     *
+     * @default true
+     */
+    repeatedCharacters?: boolean;
+
+    /**
+     * Resolve masked characters as single-character wildcards ("f*ck",
+     * "f#ck", "f@ck"). A masked token only matches when the visible letters
+     * align exactly with a dictionary word.
+     *
+     * @default true
+     */
+    maskedCharacters?: boolean;
+
+    /**
+     * Detect words spelled out with uniform single separators
+     * ("f u c k", "f.u.c.k"). The joined letters must equal a dictionary
+     * word exactly, which keeps initialisms like "U S A" clean.
+     *
+     * @default true
+     */
+    separatedLetters?: boolean;
+  };
+
+  /**
    * Performance optimization configuration.
    */
   performance?: {
@@ -421,6 +463,9 @@ export interface AllProfanityOptions {
  * ```
  */
 export enum ProfanitySeverity {
+  /** No profanity detected */
+  NONE = 0,
+
   /** Mild profanity: 1 unique word or 1 total match */
   MILD = 1,
 
@@ -515,6 +560,77 @@ interface MatchResult {
 }
 
 /**
+ * Result of leet-speak normalization with a position map back to the input.
+ *
+ * @internal
+ */
+interface LeetNormalization {
+  /** The normalized text */
+  normalized: string;
+
+  /** For each normalized character, the start index of its source range in the input */
+  starts: number[];
+
+  /** For each normalized character, the end index (exclusive) of its source range in the input */
+  ends: number[];
+}
+
+/**
+ * Compose two position maps: `inner` maps its normalized text back to the
+ * text that `outer` normalized, and the result maps `inner.normalized`
+ * directly back to the original input.
+ *
+ * @internal
+ */
+function composeMaps(
+  outer: LeetNormalization,
+  inner: LeetNormalization
+): LeetNormalization {
+  const starts = new Array<number>(inner.starts.length);
+  const ends = new Array<number>(inner.ends.length);
+  for (let i = 0; i < inner.starts.length; i++) {
+    starts[i] = outer.starts[inner.starts[i]];
+    ends[i] = outer.ends[inner.ends[i] - 1];
+  }
+  return { normalized: inner.normalized, starts, ends };
+}
+
+/**
+ * Common homoglyphs (visually identical/near-identical non-Latin characters)
+ * folded to their ASCII look-alikes for evasion-resistant matching.
+ *
+ * @internal
+ */
+const CONFUSABLES: ReadonlyMap<string, string> = new Map([
+  // Cyrillic
+  ["а", "a"], ["в", "b"], ["е", "e"], ["к", "k"], ["м", "m"], ["н", "h"],
+  ["о", "o"], ["р", "p"], ["с", "c"], ["т", "t"], ["у", "y"], ["х", "x"],
+  ["і", "i"], ["ј", "j"], ["ѕ", "s"], ["ԁ", "d"], ["ԛ", "q"], ["ԝ", "w"],
+  // Greek
+  ["α", "a"], ["β", "b"], ["γ", "y"], ["ε", "e"], ["η", "n"], ["ι", "i"],
+  ["κ", "k"], ["μ", "m"], ["ν", "v"], ["ο", "o"], ["ρ", "p"], ["σ", "s"],
+  ["τ", "t"], ["υ", "u"], ["χ", "x"], ["ω", "w"],
+]);
+
+/**
+ * Invisible characters commonly injected to break up profane words.
+ *
+ * @internal
+ */
+const INVISIBLE_CHARS: ReadonlySet<string> = new Set([
+  "\u200B", // zero-width space
+  "\u200C", // zero-width non-joiner
+  "\u200D", // zero-width joiner
+  "\uFEFF", // zero-width no-break space
+  "\u00AD", // soft hyphen
+  "\u2060", // word joiner
+  "\u180E", // Mongolian vowel separator
+]);
+
+/** Symbols treated as single-character wildcards in masked words like "f*ck". @internal */
+const MASK_CHARS: ReadonlySet<string> = new Set(["*", "#", "@", "$", "%"]);
+
+/**
  * Validates that an input is a non-empty string.
  *
  * @function validateString
@@ -556,13 +672,22 @@ function validateString(input: unknown, paramName: string): string {
  * // Logs warning: "Skipping non-string item in words: 123"
  * ```
  */
-function validateStringArray(input: unknown, paramName: string): string[] {
+function validateStringArray(
+  input: unknown,
+  paramName: string,
+  logger?: Logger
+): string[] {
   if (!Array.isArray(input)) {
     throw new TypeError(`${paramName} must be an array`);
   }
   return input.filter((item): item is string => {
     if (typeof item !== "string") {
-      console.warn(`Skipping non-string item in ${paramName}: ${item}`);
+      const message = `Skipping non-string item in ${paramName}: ${item}`;
+      if (logger) {
+        logger.warn(message);
+      } else {
+        console.warn(message);
+      }
       return false;
     }
     return item.trim().length > 0;
@@ -722,26 +847,50 @@ class TrieNode {
       pos++;
 
       if (current.isEndOfWord) {
-        if (!allowPartial) {
-          const wordStart = startPos;
-          const wordEnd = pos;
-
-          matches.push({
-            word: current.word,
-            start: wordStart - startPos,
-            end: wordEnd - startPos,
-          });
-        } else {
-          matches.push({
-            word: current.word,
-            start: 0,
-            end: pos - startPos,
-          });
-        }
+        matches.push({
+          word: current.word,
+          start: 0,
+          end: pos - startPos,
+        });
       }
     }
 
     return matches;
+  }
+
+  /**
+   * Find a stored word matching the token, where mask characters match any
+   * single character. The token must align with a complete word exactly.
+   *
+   * @param token - The token to resolve (e.g. "f*ck")
+   * @param maskChars - Characters that act as single-character wildcards
+   * @returns The first matching dictionary word, or null
+   */
+  findWildcardMatch(
+    token: string,
+    maskChars: ReadonlySet<string>
+  ): string | null {
+    return this.wildcardHelper(token, 0, maskChars);
+  }
+
+  private wildcardHelper(
+    token: string,
+    index: number,
+    maskChars: ReadonlySet<string>
+  ): string | null {
+    if (index === token.length) {
+      return this.isEndOfWord ? this.word : null;
+    }
+    const char = token[index];
+    if (maskChars.has(char)) {
+      for (const child of this.children.values()) {
+        const result = child.wildcardHelper(token, index + 1, maskChars);
+        if (result) return result;
+      }
+      return null;
+    }
+    const child = this.children.get(char);
+    return child ? child.wildcardHelper(token, index + 1, maskChars) : null;
   }
 
   /**
@@ -875,6 +1024,10 @@ export class AllProfanity {
   private caseSensitive: boolean = false;
   private strictMode: boolean = false;
   private detectPartialWords: boolean = false;
+  private evasionUnicode: boolean = true;
+  private evasionRepeatedChars: boolean = true;
+  private evasionMaskedChars: boolean = true;
+  private evasionSeparatedLetters: boolean = true;
 
   private readonly availableLanguages: Record<string, string[]> = {
     english: englishBadWords || [],
@@ -914,7 +1067,6 @@ export class AllProfanity {
     ["¿", "j"],
     ["|<", "k"],
     ["1<", "k"],
-    ["7", "l"],
     ["|\\/|", "m"],
     ["/\\/\\", "m"],
     ["|\\|", "n"],
@@ -928,13 +1080,11 @@ export class AllProfanity {
     ["12", "r"],
     ["5", "s"],
     ["$", "s"],
-    ["z", "s"],
     ["7", "t"],
     ["+", "t"],
     ["†", "t"],
     ["|_|", "u"],
     ["(_)", "u"],
-    ["v", "u"],
     ["\\/", "v"],
     ["|/", "v"],
     ["\\/\\/", "w"],
@@ -942,7 +1092,6 @@ export class AllProfanity {
     ["><", "x"],
     ["}{", "x"],
     ["`/", "y"],
-    ["j", "y"],
     ["2", "z"],
     ["7_", "z"],
   ]);
@@ -953,8 +1102,12 @@ export class AllProfanity {
   private ahoCorasickAutomaton: AhoCorasick | null = null;
   private bloomFilter: BloomFilter | null = null;
   private contextAnalyzer: ContextAnalyzer | null = null;
+  private contextScoreThreshold: number = 0.5;
   private matchingAlgorithm: "trie" | "aho-corasick" | "hybrid" = "trie";
   private resultCache: Map<string, ProfanityDetectionResult> | null = null;
+  private cacheMaxSize: number = 1000;
+  private leetTokensByFirstChar: Map<string, Array<[string, string]>> | null =
+    null;
 
   /**
    * Creates a new AllProfanity instance with the specified configuration.
@@ -1007,6 +1160,13 @@ export class AllProfanity {
     this.caseSensitive = options?.caseSensitive ?? false;
     this.strictMode = options?.strictMode ?? false;
     this.detectPartialWords = options?.detectPartialWords ?? false;
+    this.evasionUnicode = options?.evasionProtection?.unicode ?? true;
+    this.evasionRepeatedChars =
+      options?.evasionProtection?.repeatedCharacters ?? true;
+    this.evasionMaskedChars =
+      options?.evasionProtection?.maskedCharacters ?? true;
+    this.evasionSeparatedLetters =
+      options?.evasionProtection?.separatedLetters ?? true;
 
     if (options?.whitelistWords) {
       this.addToWhitelist(options.whitelistWords);
@@ -1027,6 +1187,10 @@ export class AllProfanity {
       Object.entries(options.customDictionaries).forEach(([name, words]) => {
         this.loadCustomDictionary(name, words);
       });
+    }
+
+    if (options?.ahoCorasick?.prebuild && this.ahoCorasickAutomaton) {
+      this.ahoCorasickAutomaton.build();
     }
   }
 
@@ -1084,6 +1248,10 @@ export class AllProfanity {
         );
       }
 
+      if (options?.contextAnalysis?.scoreThreshold !== undefined) {
+        this.contextScoreThreshold = options.contextAnalysis.scoreThreshold;
+      }
+
       this.logger.info(
         `Context Analyzer initialized for languages: ${contextLanguages.join(", ")}`
       );
@@ -1091,38 +1259,346 @@ export class AllProfanity {
 
     // Initialize result cache if enabled
     if (options?.performance?.enableCaching) {
-      const cacheSize = options.performance.cacheSize || 1000;
+      this.cacheMaxSize = options.performance.cacheSize || 1000;
       this.resultCache = new Map();
-      this.logger.info(`Result caching enabled with size limit: ${cacheSize}`);
+      this.logger.info(
+        `Result caching enabled with size limit: ${this.cacheMaxSize}`
+      );
     }
   }
 
   /**
-   * Normalize leet speak to regular characters.
-   * @param text - The input text.
-   * @returns Normalized text.
+   * Normalize leet speak to regular characters, keeping a map from each
+   * normalized character back to its source range in the input text.
+   *
+   * For normalized index i, starts[i]/ends[i] give the [start, end) range in
+   * the input that produced that character. A match [s, e) in the normalized
+   * string therefore spans [starts[s], ends[e - 1]) in the input. This is what
+   * keeps positions correct when length-changing mappings like "ph" -> "f"
+   * apply.
    */
-  private normalizeLeetSpeak(text: string): string {
-    if (!this.enableLeetSpeak) return text;
-
-    let normalized = text.toLowerCase();
-    const sortedMappings = Array.from(this.leetMappings.entries()).sort(
-      ([leetA], [leetB]) => leetB.length - leetA.length
-    );
-    for (const [leet, normal] of sortedMappings) {
-      const regex = new RegExp(this.escapeRegex(leet), "g");
-      normalized = normalized.replace(regex, normal);
+  private normalizeLeetSpeakWithMap(text: string): LeetNormalization {
+    // Bucket tokens by first character so each position costs one Map lookup
+    // instead of a scan over every mapping (longest token first per bucket).
+    if (!this.leetTokensByFirstChar) {
+      this.leetTokensByFirstChar = new Map();
+      for (const entry of this.leetMappings.entries()) {
+        const bucket = this.leetTokensByFirstChar.get(entry[0][0]);
+        if (bucket) {
+          bucket.push(entry);
+        } else {
+          this.leetTokensByFirstChar.set(entry[0][0], [entry]);
+        }
+      }
+      for (const bucket of this.leetTokensByFirstChar.values()) {
+        bucket.sort(([leetA], [leetB]) => leetB.length - leetA.length);
+      }
     }
-    return normalized;
+
+    // Fast path: most text contains no leet characters at all. Scan for the
+    // first applicable mapping before allocating the position-map arrays.
+    let hasLeet = false;
+    for (let j = 0; j < text.length && !hasLeet; j++) {
+      const bucket = this.leetTokensByFirstChar.get(text[j]);
+      if (bucket) {
+        for (const [leet] of bucket) {
+          if (leet.length === 1 || text.startsWith(leet, j)) {
+            hasLeet = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!hasLeet) {
+      return { normalized: text, starts: [], ends: [] };
+    }
+
+    const parts: string[] = [];
+    const starts: number[] = [];
+    const ends: number[] = [];
+    let i = 0;
+
+    while (i < text.length) {
+      let consumed = 0;
+      let replacement = "";
+      const bucket = this.leetTokensByFirstChar.get(text[i]);
+      if (bucket) {
+        for (const [leet, normal] of bucket) {
+          if (leet.length === 1 || text.startsWith(leet, i)) {
+            consumed = leet.length;
+            replacement = normal;
+            break;
+          }
+        }
+      }
+      if (consumed === 0) {
+        consumed = 1;
+        replacement = text[i];
+      }
+      for (const char of replacement) {
+        parts.push(char);
+        starts.push(i);
+        ends.push(i + consumed);
+      }
+      i += consumed;
+    }
+
+    return { normalized: parts.join(""), starts, ends };
   }
 
   /**
-   * Escape regex special characters in a string.
-   * @param str - The string to escape.
-   * @returns The escaped string.
+   * Fold unicode evasion tactics into ASCII with a position map: fullwidth
+   * forms, Cyrillic/Greek homoglyphs, Latin diacritics, and invisible
+   * characters injected inside words. Non-Latin scripts (Devanagari, Tamil,
+   * etc.) pass through untouched. Returns null when nothing changed.
    */
-  private escapeRegex(str: string): string {
-    return str.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
+  private unicodeNormalizeWithMap(text: string): LeetNormalization | null {
+    // Fast path: pure ASCII text needs no folding
+    let needsScan = false;
+    for (let j = 0; j < text.length; j++) {
+      if (text.charCodeAt(j) > 127) {
+        needsScan = true;
+        break;
+      }
+    }
+    if (!needsScan) return null;
+
+    const parts: string[] = [];
+    const starts: number[] = [];
+    const ends: number[] = [];
+    let changed = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      const code = text.charCodeAt(i);
+
+      if (code < 128) {
+        parts.push(char);
+        starts.push(i);
+        ends.push(i + 1);
+        continue;
+      }
+
+      if (INVISIBLE_CHARS.has(char)) {
+        changed = true;
+        continue;
+      }
+
+      // Fullwidth ASCII block (！ U+FF01 .. ～ U+FF5E)
+      if (code >= 0xff01 && code <= 0xff5e) {
+        parts.push(String.fromCharCode(code - 0xfee0));
+        starts.push(i);
+        ends.push(i + 1);
+        changed = true;
+        continue;
+      }
+
+      const confusable = CONFUSABLES.get(char);
+      if (confusable) {
+        parts.push(confusable);
+        starts.push(i);
+        ends.push(i + 1);
+        changed = true;
+        continue;
+      }
+
+      // Bare combining marks (covers decomposed input like "u" + U+0308)
+      if (code >= 0x0300 && code <= 0x036f) {
+        changed = true;
+        continue;
+      }
+
+      // Latin letters with diacritics: decompose and strip the marks.
+      // Limited to the Latin blocks so other scripts keep their composed forms.
+      if (code >= 0x00c0 && code < 0x0250) {
+        for (const piece of char.normalize("NFD")) {
+          const pieceCode = piece.charCodeAt(0);
+          if (pieceCode >= 0x0300 && pieceCode <= 0x036f) {
+            changed = true;
+            continue;
+          }
+          const folded = this.caseSensitive ? piece : piece.toLowerCase();
+          parts.push(folded);
+          starts.push(i);
+          ends.push(i + 1);
+          if (folded !== char) changed = true;
+        }
+        continue;
+      }
+
+      parts.push(char);
+      starts.push(i);
+      ends.push(i + 1);
+    }
+
+    if (!changed) return null;
+    return { normalized: parts.join(""), starts, ends };
+  }
+
+  /**
+   * Collapse runs of repeated characters ("fuuuuck" -> "fuck") with a
+   * position map. Only triggers when a run of 3+ identical characters
+   * exists, so ordinary doubled letters never pay for this pass.
+   * Returns null when not triggered.
+   */
+  private collapseRepeatsWithMap(text: string): LeetNormalization | null {
+    let triggered = false;
+    for (let j = 2; j < text.length; j++) {
+      if (text[j] === text[j - 1] && text[j] === text[j - 2]) {
+        triggered = true;
+        break;
+      }
+    }
+    if (!triggered) return null;
+
+    const parts: string[] = [];
+    const starts: number[] = [];
+    const ends: number[] = [];
+    let i = 0;
+    while (i < text.length) {
+      let runEnd = i + 1;
+      while (runEnd < text.length && text[runEnd] === text[i]) {
+        runEnd++;
+      }
+      parts.push(text[i]);
+      starts.push(i);
+      ends.push(runEnd);
+      i = runEnd;
+    }
+    return { normalized: parts.join(""), starts, ends };
+  }
+
+  /**
+   * Build the list of (text, position-map) variants to scan: the base text
+   * plus unicode-folded, leet-normalized and repeat-collapsed variants, each
+   * included only when its normalization actually changed something.
+   */
+  private buildScanPasses(
+    normalizedText: string
+  ): Array<{ text: string; posMap?: LeetNormalization }> {
+    const passes: Array<{ text: string; posMap?: LeetNormalization }> = [
+      { text: normalizedText },
+    ];
+    let workText = normalizedText;
+    let workMap: LeetNormalization | undefined;
+
+    if (this.evasionUnicode) {
+      const uni = this.unicodeNormalizeWithMap(normalizedText);
+      if (uni) {
+        passes.push({ text: uni.normalized, posMap: uni });
+        workText = uni.normalized;
+        workMap = uni;
+      }
+    }
+
+    if (this.enableLeetSpeak) {
+      const leet = this.normalizeLeetSpeakWithMap(workText);
+      if (leet.normalized !== workText) {
+        passes.push({
+          text: leet.normalized,
+          posMap: workMap ? composeMaps(workMap, leet) : leet,
+        });
+      }
+    }
+
+    if (this.evasionRepeatedChars) {
+      const collapsed = this.collapseRepeatsWithMap(workText);
+      if (collapsed) {
+        passes.push({
+          text: collapsed.normalized,
+          posMap: workMap ? composeMaps(workMap, collapsed) : collapsed,
+        });
+      }
+    }
+
+    return passes;
+  }
+
+  /**
+   * Find dictionary words hidden behind masked characters ("f*ck", "f#ck").
+   * Each mask matches exactly one character and the token's visible letters
+   * must align with a dictionary word, so "c#" or "5% off" never flag.
+   */
+  private findMaskedMatches(
+    searchText: string,
+    originalText: string
+  ): MatchResult[] {
+    const results: MatchResult[] = [];
+    if (!/[*#@$%]/.test(searchText)) return results;
+
+    const tokenRegex = /[\p{L}*#@$%]+/gu;
+    let tokenMatch: RegExpExecArray | null;
+    while ((tokenMatch = tokenRegex.exec(searchText)) !== null) {
+      const token = tokenMatch[0];
+      let maskCount = 0;
+      for (const char of token) {
+        if (MASK_CHARS.has(char)) maskCount++;
+      }
+      if (maskCount === 0 || maskCount > 2) continue;
+      if (
+        MASK_CHARS.has(token[0]) ||
+        MASK_CHARS.has(token[token.length - 1])
+      ) {
+        continue;
+      }
+
+      const word = this.profanityTrie.findWildcardMatch(token, MASK_CHARS);
+      if (!word) continue;
+
+      const start = tokenMatch.index;
+      const end = start + token.length;
+      if (
+        !this.detectPartialWords &&
+        !this.isWholeWord(originalText, start, end)
+      ) {
+        continue;
+      }
+      const matchedText = originalText.substring(start, end);
+      if (this.isWhitelistedMatch(word, matchedText)) continue;
+      if (!this.hasWordBoundaries(originalText, start, end)) continue;
+
+      results.push({ word, start, end, originalWord: matchedText });
+    }
+    return results;
+  }
+
+  /**
+   * Find words spelled out with a uniform single separator ("f u c k",
+   * "f.u.c.k"). The joined letters must equal a dictionary word exactly:
+   * runs like "U S A" or letters inside spelled-out sentences never flag.
+   */
+  private findSeparatedMatches(
+    searchText: string,
+    originalText: string
+  ): MatchResult[] {
+    const results: MatchResult[] = [];
+    // Single letters joined by one consistent separator, at least 3 letters,
+    // not touching letters/digits on either side.
+    const runRegex =
+      /(?<![\p{L}\p{N}])\p{L}(?:([ ._\-/])\p{L})(?:\1\p{L})+(?![\p{L}\p{N}])/gu;
+    let runMatch: RegExpExecArray | null;
+    while ((runMatch = runRegex.exec(searchText)) !== null) {
+      const run = runMatch[0];
+      const separator = runMatch[1];
+      const joined = run.split(separator).join("");
+
+      const trieMatches = this.profanityTrie.findMatches(joined, 0, false);
+      const exact = trieMatches.find((m) => m.end === joined.length);
+      if (!exact) continue;
+
+      const start = runMatch.index;
+      const end = start + run.length;
+      const matchedText = originalText.substring(start, end);
+      if (
+        this.isWhitelistedMatch(exact.word, joined) ||
+        this.isWhitelistedMatch(exact.word, matchedText)
+      ) {
+        continue;
+      }
+
+      results.push({ word: exact.word, start, end, originalWord: matchedText });
+    }
+    return results;
   }
 
   /**
@@ -1173,6 +1649,32 @@ export class AllProfanity {
   }
 
   /**
+   * In partial-word mode, check whether the word CONTAINING the match is
+   * whitelisted: with "classic" whitelisted, the embedded "ass" must not flag.
+   */
+  private isWhitelistedContainingWord(
+    originalText: string,
+    start: number,
+    end: number
+  ): boolean {
+    if (!this.detectPartialWords || this.whitelistSet.size === 0) {
+      return false;
+    }
+    let tokenStart = start;
+    let tokenEnd = end;
+    while (tokenStart > 0 && /\w/.test(originalText[tokenStart - 1])) {
+      tokenStart--;
+    }
+    while (tokenEnd < originalText.length && /\w/.test(originalText[tokenEnd])) {
+      tokenEnd++;
+    }
+    if (tokenStart === start && tokenEnd === end) {
+      return false; // match is the whole token; already covered by isWhitelistedMatch
+    }
+    return this.isWhitelisted(originalText.substring(tokenStart, tokenEnd));
+  }
+
+  /**
    * Remove overlapping matches, keeping only the longest at each start position.
    * @param matches - Array of match results.
    * @returns Deduplicated matches.
@@ -1198,7 +1700,8 @@ export class AllProfanity {
    */
   private findMatchesWithAhoCorasick(
     searchText: string,
-    originalText: string
+    originalText: string,
+    posMap?: LeetNormalization
   ): MatchResult[] {
     if (!this.ahoCorasickAutomaton) {
       return [];
@@ -1208,23 +1711,29 @@ export class AllProfanity {
     const results: MatchResult[] = [];
 
     for (const match of ahoMatches) {
+      const start = posMap ? posMap.starts[match.start] : match.start;
+      const end = posMap ? posMap.ends[match.end - 1] : match.end;
+
       if (
         !this.detectPartialWords &&
-        !this.isWholeWord(originalText, match.start, match.end)
+        !this.isWholeWord(originalText, start, end)
       ) {
         continue;
       }
 
-      const matchedText = originalText.substring(match.start, match.end);
+      const matchedText = originalText.substring(start, end);
       if (this.isWhitelistedMatch(match.pattern, matchedText)) {
         continue;
       }
+      if (this.isWhitelistedContainingWord(originalText, start, end)) {
+        continue;
+      }
 
-      if (this.hasWordBoundaries(originalText, match.start, match.end)) {
+      if (this.hasWordBoundaries(originalText, start, end)) {
         results.push({
           word: match.pattern,
-          start: match.start,
-          end: match.end,
+          start,
+          end,
           originalWord: matchedText,
         });
       }
@@ -1234,37 +1743,44 @@ export class AllProfanity {
   }
 
   /**
-   * Hybrid approach: Aho-Corasick for fast matching, Bloom Filter for validation
+   * Check whether the Bloom Filter can quickly rule out any profanity in the
+   * text. Only safe for ASCII whole-word matching: partial matches and
+   * non-ASCII scripts can match inside tokens, so they bypass the prefilter.
+   */
+  private bloomQuickReject(searchText: string): boolean {
+    if (!this.bloomFilter || this.detectPartialWords) return false;
+    // eslint-disable-next-line no-control-regex
+    if (!/^[\x00-\x7F]*$/.test(searchText)) return false;
+
+    const tokens = searchText.split(/[^\p{L}\p{N}]+/u);
+    for (const token of tokens) {
+      if (token.length > 0 && this.bloomFilter.mightContain(token)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Hybrid approach: Bloom Filter for quick rejection, Aho-Corasick for matching
    */
   private findMatchesHybrid(
     searchText: string,
-    originalText: string
+    originalText: string,
+    posMap?: LeetNormalization
   ): MatchResult[] {
+    if (this.bloomQuickReject(searchText)) {
+      return [];
+    }
+
     // Use Aho-Corasick for primary matching if available
     if (this.ahoCorasickAutomaton) {
-      const matches = this.findMatchesWithAhoCorasick(searchText, originalText);
-
-      // If Bloom Filter is enabled, validate matches
-      if (this.bloomFilter) {
-        return matches.filter((match) =>
-          this.bloomFilter!.mightContain(match.word)
-        );
-      }
-
-      return matches;
+      return this.findMatchesWithAhoCorasick(searchText, originalText, posMap);
     }
 
     // Fallback to Trie if Aho-Corasick not available
     const matches: MatchResult[] = [];
-    this.findMatches(searchText, originalText, matches);
-
-    // Validate with Bloom Filter if enabled
-    if (this.bloomFilter) {
-      return matches.filter((match) =>
-        this.bloomFilter!.mightContain(match.word)
-      );
-    }
-
+    this.findMatches(searchText, originalText, matches, posMap);
     return matches;
   }
 
@@ -1291,6 +1807,14 @@ export class AllProfanity {
       // If score is above threshold, it's likely profanity
       return analysis.score >= scoreThreshold;
     });
+  }
+
+  /**
+   * Drop all cached detection results. Must be called whenever the word lists
+   * or any option that affects detection output changes.
+   */
+  private invalidateCache(): void {
+    this.resultCache?.clear();
   }
 
   /**
@@ -1352,14 +1876,19 @@ export class AllProfanity {
         hasProfanity: false,
         detectedWords: [],
         cleanedText: validatedText,
-        severity: ProfanitySeverity.MILD,
+        severity: ProfanitySeverity.NONE,
         positions: [],
       };
     }
 
-    // Check cache first if enabled
-    if (this.resultCache?.has(validatedText)) {
-      return this.resultCache.get(validatedText)!;
+    // Check cache first if enabled (refresh recency for LRU eviction)
+    if (this.resultCache) {
+      const cached = this.resultCache.get(validatedText);
+      if (cached) {
+        this.resultCache.delete(validatedText);
+        this.resultCache.set(validatedText, cached);
+        return cached;
+      }
     }
 
     let matches: MatchResult[] = [];
@@ -1367,51 +1896,49 @@ export class AllProfanity {
       ? validatedText
       : validatedText.toLowerCase();
 
-    // Choose matching algorithm based on configuration
-    switch (this.matchingAlgorithm) {
-      case "aho-corasick":
-        matches = this.findMatchesWithAhoCorasick(normalizedText, validatedText);
-        if (this.enableLeetSpeak) {
-          const leetNormalized = this.normalizeLeetSpeak(normalizedText);
-          if (leetNormalized !== normalizedText) {
-            const leetMatches = this.findMatchesWithAhoCorasick(
-              leetNormalized,
-              validatedText
-            );
-            matches.push(...leetMatches);
-          }
-        }
-        break;
+    // Scan the base text plus every triggered normalization variant
+    // (unicode folding, leet speak, repeated-character collapse)
+    for (const pass of this.buildScanPasses(normalizedText)) {
+      switch (this.matchingAlgorithm) {
+        case "aho-corasick":
+          matches.push(
+            ...this.findMatchesWithAhoCorasick(
+              pass.text,
+              validatedText,
+              pass.posMap
+            )
+          );
+          break;
 
-      case "hybrid":
-        matches = this.findMatchesHybrid(normalizedText, validatedText);
-        if (this.enableLeetSpeak) {
-          const leetNormalized = this.normalizeLeetSpeak(normalizedText);
-          if (leetNormalized !== normalizedText) {
-            const leetMatches = this.findMatchesHybrid(
-              leetNormalized,
-              validatedText
-            );
-            matches.push(...leetMatches);
-          }
-        }
-        break;
+        case "hybrid":
+          matches.push(
+            ...this.findMatchesHybrid(pass.text, validatedText, pass.posMap)
+          );
+          break;
 
-      case "trie":
-      default:
-        this.findMatches(normalizedText, validatedText, matches);
-        if (this.enableLeetSpeak) {
-          const leetNormalized = this.normalizeLeetSpeak(normalizedText);
-          if (leetNormalized !== normalizedText) {
-            this.findMatches(leetNormalized, validatedText, matches);
-          }
-        }
-        break;
+        case "trie":
+        default:
+          this.findMatches(pass.text, validatedText, matches, pass.posMap);
+          break;
+      }
+    }
+
+    if (this.evasionMaskedChars) {
+      matches.push(...this.findMaskedMatches(normalizedText, validatedText));
+    }
+    if (this.evasionSeparatedLetters) {
+      matches.push(
+        ...this.findSeparatedMatches(normalizedText, validatedText)
+      );
     }
 
     // Apply context analysis if enabled
     if (this.contextAnalyzer) {
-      matches = this.applyContextAnalysis(validatedText, matches);
+      matches = this.applyContextAnalysis(
+        validatedText,
+        matches,
+        this.contextScoreThreshold
+      );
     }
 
     const uniqueMatches = this.deduplicateMatches(matches);
@@ -1431,16 +1958,15 @@ export class AllProfanity {
       })),
     };
 
-    // Cache result if caching is enabled
+    // Cache result if caching is enabled (evict least recently used entry)
     if (this.resultCache) {
-      this.resultCache.set(validatedText, result);
-      // Implement simple LRU by clearing cache when it gets too large
-      if (this.resultCache.size > 1000) {
-        const firstKey = this.resultCache.keys().next().value;
-        if (firstKey !== undefined) {
-          this.resultCache.delete(firstKey);
+      if (this.resultCache.size >= this.cacheMaxSize) {
+        const oldestKey = this.resultCache.keys().next().value;
+        if (oldestKey !== undefined) {
+          this.resultCache.delete(oldestKey);
         }
       }
+      this.resultCache.set(validatedText, result);
     }
 
     return result;
@@ -1455,7 +1981,8 @@ export class AllProfanity {
   private findMatches(
     searchText: string,
     originalText: string,
-    matches: MatchResult[]
+    matches: MatchResult[],
+    posMap?: LeetNormalization
   ): void {
     for (let i = 0; i < searchText.length; i++) {
       const matchResults = this.profanityTrie.findMatches(
@@ -1464,8 +1991,10 @@ export class AllProfanity {
         this.detectPartialWords
       );
       for (const match of matchResults) {
-        const start = i + match.start;
-        const end = i + match.end;
+        const searchStart = i + match.start;
+        const searchEnd = i + match.end;
+        const start = posMap ? posMap.starts[searchStart] : searchStart;
+        const end = posMap ? posMap.ends[searchEnd - 1] : searchEnd;
         if (
           !this.detectPartialWords &&
           !this.isWholeWord(originalText, start, end)
@@ -1474,6 +2003,9 @@ export class AllProfanity {
         }
         const matchedText = originalText.substring(start, end);
         if (this.isWhitelistedMatch(match.word, matchedText)) {
+          continue;
+        }
+        if (this.isWhitelistedContainingWord(originalText, start, end)) {
           continue;
         }
         if (this.hasWordBoundaries(originalText, start, end)) {
@@ -1546,7 +2078,91 @@ export class AllProfanity {
    * @see {@link detect} for detailed profanity analysis
    */
   check(text: string): boolean {
-    return this.detect(text).hasProfanity;
+    const validatedText = validateString(text, "text");
+    if (validatedText.length === 0) return false;
+
+    // Reuse a cached full result when available
+    if (this.resultCache) {
+      const cached = this.resultCache.get(validatedText);
+      if (cached) return cached.hasProfanity;
+    }
+
+    // Context analysis scores matches against their surroundings; reuse the
+    // full pipeline so check() and detect() can never disagree.
+    if (this.contextAnalyzer) {
+      return this.detect(validatedText).hasProfanity;
+    }
+
+    const normalizedText = this.caseSensitive
+      ? validatedText
+      : validatedText.toLowerCase();
+
+    // Early exit on the first accepted match — unlike detect(), no positions,
+    // severity or cleaned text are computed. The base text is scanned before
+    // any normalization variants are built, so plainly profane text returns
+    // without paying for normalization at all.
+    if (this.hasMatchInPass(normalizedText, validatedText)) {
+      return true;
+    }
+    const passes = this.buildScanPasses(normalizedText);
+    for (let p = 1; p < passes.length; p++) {
+      if (this.hasMatchInPass(passes[p].text, validatedText, passes[p].posMap)) {
+        return true;
+      }
+    }
+    if (
+      this.evasionMaskedChars &&
+      this.findMaskedMatches(normalizedText, validatedText).length > 0
+    ) {
+      return true;
+    }
+    if (
+      this.evasionSeparatedLetters &&
+      this.findSeparatedMatches(normalizedText, validatedText).length > 0
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Trie scan that stops at the first match surviving the whole-word,
+   * whitelist and boundary checks. Powers the fast path in check().
+   */
+  private hasMatchInPass(
+    searchText: string,
+    originalText: string,
+    posMap?: LeetNormalization
+  ): boolean {
+    for (let i = 0; i < searchText.length; i++) {
+      const matchResults = this.profanityTrie.findMatches(
+        searchText,
+        i,
+        this.detectPartialWords
+      );
+      for (const match of matchResults) {
+        const searchEnd = i + match.end;
+        const start = posMap ? posMap.starts[i] : i;
+        const end = posMap ? posMap.ends[searchEnd - 1] : searchEnd;
+        if (
+          !this.detectPartialWords &&
+          !this.isWholeWord(originalText, start, end)
+        ) {
+          continue;
+        }
+        const matchedText = originalText.substring(start, end);
+        if (this.isWhitelistedMatch(match.word, matchedText)) {
+          continue;
+        }
+        if (this.isWhitelistedContainingWord(originalText, start, end)) {
+          continue;
+        }
+        if (this.hasWordBoundaries(originalText, start, end)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /**
@@ -1612,9 +2228,10 @@ export class AllProfanity {
       ),
     ].sort((a, b) => b.start - a.start);
 
+    const placeholderChar = placeholder.charAt(0);
     for (const pos of sortedPositions) {
       const originalWord = text.substring(pos.start, pos.end);
-      const replacement = placeholder.repeat(originalWord.length);
+      const replacement = placeholderChar.repeat(originalWord.length);
       result =
         result.substring(0, pos.start) +
         replacement +
@@ -1742,11 +2359,16 @@ export class AllProfanity {
    */
   add(word: string | string[]): void {
     const words = Array.isArray(word) ? word : [word];
-    const validatedWords = validateStringArray(words, "words to add");
+    const validatedWords = validateStringArray(
+      words,
+      "words to add",
+      this.logger
+    );
     for (const w of validatedWords) {
       this.dynamicWords.add(w);
       this.addWordToTrie(w);
     }
+    this.invalidateCache();
   }
 
   /**
@@ -1797,12 +2419,20 @@ export class AllProfanity {
    */
   remove(word: string | string[]): void {
     const words = Array.isArray(word) ? word : [word];
-    const validatedWords = validateStringArray(words, "words to remove");
+    const validatedWords = validateStringArray(
+      words,
+      "words to remove",
+      this.logger
+    );
     for (const w of validatedWords) {
       const normalizedWord = this.caseSensitive ? w : w.toLowerCase();
       this.profanityTrie.removeWord(normalizedWord);
       this.dynamicWords.delete(w);
+      // Bloom filter entries cannot be deleted, but stale entries only cost a
+      // skipped quick-rejection — they can never produce a match by themselves.
+      this.ahoCorasickAutomaton?.removePattern(normalizedWord);
     }
+    this.invalidateCache();
   }
 
   /**
@@ -1810,11 +2440,16 @@ export class AllProfanity {
    * @param words - Words to whitelist.
    */
   addToWhitelist(words: string[]): void {
-    const validatedWords = validateStringArray(words, "whitelist words");
+    const validatedWords = validateStringArray(
+      words,
+      "whitelist words",
+      this.logger
+    );
     for (const word of validatedWords) {
       const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
       this.whitelistSet.add(normalizedWord);
     }
+    this.invalidateCache();
   }
 
   /**
@@ -1822,11 +2457,16 @@ export class AllProfanity {
    * @param words - Words to remove from whitelist.
    */
   removeFromWhitelist(words: string[]): void {
-    const validatedWords = validateStringArray(words, "whitelist words");
+    const validatedWords = validateStringArray(
+      words,
+      "whitelist words",
+      this.logger
+    );
     for (const word of validatedWords) {
       const normalizedWord = this.caseSensitive ? word : word.toLowerCase();
       this.whitelistSet.delete(normalizedWord);
     }
+    this.invalidateCache();
   }
 
   /**
@@ -1922,6 +2562,7 @@ export class AllProfanity {
       }
 
       this.loadedLanguages.add(langKey);
+      this.invalidateCache();
       this.logger.info(
         `Loaded ${addedCount} words from ${language} dictionary`
       );
@@ -1938,7 +2579,11 @@ export class AllProfanity {
    * @returns Number of successfully loaded languages.
    */
   loadLanguages(languages: string[]): number {
-    const validatedLanguages = validateStringArray(languages, "languages");
+    const validatedLanguages = validateStringArray(
+      languages,
+      "languages",
+      this.logger
+    );
     return validatedLanguages.reduce((count, lang) => {
       return this.loadLanguage(lang) ? count + 1 : count;
     }, 0);
@@ -2017,7 +2662,8 @@ export class AllProfanity {
     validateString(name, "dictionary name");
     const validatedWords = validateStringArray(
       words,
-      "custom dictionary words"
+      "custom dictionary words",
+      this.logger
     );
 
     if (validatedWords.length === 0) {
@@ -2035,6 +2681,7 @@ export class AllProfanity {
 
       this.availableLanguages[name.toLowerCase()] = validatedWords;
       this.loadedLanguages.add(name.toLowerCase());
+      this.invalidateCache();
 
       this.logger.info(
         `Loaded ${addedCount} words from custom dictionary '${name}'`
@@ -2065,9 +2712,17 @@ export class AllProfanity {
     // Add to Trie (always used as fallback)
     this.profanityTrie.addWord(normalizedWord);
 
-    // Add to Bloom Filter if enabled
+    // Add to Bloom Filter if enabled. Constituent tokens of multi-word or
+    // symbol-containing entries are added too, so the token-level quick
+    // rejection in bloomQuickReject() can never miss a phrase.
     if (this.bloomFilter) {
       this.bloomFilter.add(normalizedWord);
+      const tokens = normalizedWord.split(/[^\p{L}\p{N}]+/u);
+      for (const token of tokens) {
+        if (token.length > 0 && token !== normalizedWord) {
+          this.bloomFilter.add(token);
+        }
+      }
     }
 
     // Add to Aho-Corasick automaton if enabled
@@ -2084,7 +2739,7 @@ export class AllProfanity {
    * @returns Severity level.
    */
   private calculateSeverity(matches: MatchResult[]): ProfanitySeverity {
-    if (matches.length === 0) return ProfanitySeverity.MILD;
+    if (matches.length === 0) return ProfanitySeverity.NONE;
 
     const uniqueWords = new Set(matches.map((m) => m.word)).size;
     const totalMatches = matches.length;
@@ -2103,6 +2758,9 @@ export class AllProfanity {
     this.profanityTrie.clear();
     this.loadedLanguages.clear();
     this.dynamicWords.clear();
+    this.ahoCorasickAutomaton?.clear();
+    this.bloomFilter?.clear();
+    this.invalidateCache();
   }
 
   /**
@@ -2117,6 +2775,7 @@ export class AllProfanity {
     }
 
     this.defaultPlaceholder = placeholder.charAt(0);
+    this.invalidateCache();
   }
 
   /**
@@ -2152,10 +2811,13 @@ export class AllProfanity {
   }
 
   /**
-   * Rebuild the profanity trie from loaded dictionaries and dynamic words.
+   * Rebuild all matching structures (trie, Aho-Corasick automaton, Bloom
+   * Filter) from loaded dictionaries and dynamic words.
    */
-  private rebuildTrie(): void {
+  private rebuildIndexes(): void {
     this.profanityTrie.clear();
+    this.ahoCorasickAutomaton?.clear();
+    this.bloomFilter?.clear();
     for (const lang of this.loadedLanguages) {
       const words = this.availableLanguages[lang] || [];
       for (const word of words) {
@@ -2165,6 +2827,7 @@ export class AllProfanity {
     for (const word of this.dynamicWords) {
       this.addWordToTrie(word);
     }
+    this.invalidateCache();
   }
 
   /**
@@ -2196,8 +2859,9 @@ export class AllProfanity {
       this.addToWhitelist(options.whitelistWords);
     }
     if (rebuildNeeded) {
-      this.rebuildTrie();
+      this.rebuildIndexes();
     }
+    this.invalidateCache();
   }
 
   /**
@@ -2212,7 +2876,9 @@ export class AllProfanity {
     if (config.bloomFilter) options.bloomFilter = config.bloomFilter;
     if (config.ahoCorasick) options.ahoCorasick = config.ahoCorasick;
     if (config.contextAnalysis) options.contextAnalysis = config.contextAnalysis;
+    if (config.evasionProtection) options.evasionProtection = config.evasionProtection;
     if (config.performance) options.performance = config.performance;
+    if (config.silent !== undefined) options.silent = config.silent;
 
     if (config.profanityDetection) {
       options.enableLeetSpeak = config.profanityDetection.enableLeetSpeak;
@@ -2238,6 +2904,7 @@ export class AllProfanity {
 
 /**
  * Singleton instance of AllProfanity with default configuration.
+ * Silent so that importing the library never writes to the console.
  */
-const allProfanity = new AllProfanity();
+const allProfanity = new AllProfanity({ silent: true });
 export default allProfanity;

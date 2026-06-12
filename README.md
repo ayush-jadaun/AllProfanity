@@ -1,22 +1,50 @@
 # AllProfanity
 
-A blazing-fast, multi-language profanity filter for JavaScript/TypeScript with advanced algorithms (Aho-Corasick, Bloom Filters) delivering **664% faster performance** on large texts, intelligent leet-speak detection, and pattern-based context analysis.
+The most evasion-resistant multi-language profanity filter for JavaScript/TypeScript. Catches leet-speak (`sh1t`), masked words (`f*ck`, `f#ck`), stretched letters (`fuuuuck`), spaced-out spelling (`f u c k`), Unicode tricks (fullwidth `ｆｕｃｋ`, homoglyph `fυck`, zero-width injection) and nine languages — with zero false positives on the classic traps ("Scunthorpe", "classic", "bass") and sub-millisecond checks.
 
 [![npm version](https://img.shields.io/npm/v/allprofanity.svg)](https://www.npmjs.com/package/allprofanity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## What's New in v2.2.0
+## What's New in v2.3.0
 
-- **Aho-Corasick Algorithm:** 664% faster on large texts (1KB+) with O(n) multi-pattern matching
-- **Bloom Filters:** Lightning-fast probabilistic lookups reduce unnecessary checks
-- **Result Caching:** 123x speedup on repeated inputs (perfect for chat apps and forms)
-- **Pattern-Based Context Detection:** Reduces false positives in medical/negation contexts
-- **Word Boundary Detection:** Smart whole-word matching prevents flagging "assassin" or "assistance"
-- **Flexible Configuration:** Choose algorithm and trade-offs based on your use case
+- **Evasion protection suite:** masked characters (`f*ck`, `f#ck`, `f@ck`), stretched letters (`fuuuuck`), separated letters (`f u c k`, `f.u.c.k`), and a Unicode folding pass (fullwidth forms, Cyrillic/Greek homoglyphs, diacritics, zero-width/invisible characters) — all on by default, all individually configurable
+- **Early-exit `check()`:** boolean checks stop at the first confirmed match — profane text now checks up to ~60× faster than v2.2
+- **8× faster leet-speak engine:** the normalizer was rewritten with first-character bucketing and an ASCII fast path
+- **Position-accurate everywhere:** matches found through any normalization (leet, Unicode, collapse) now report exact positions in the *original* string, so cleaning masks exactly the evasive text
+- **Hardened core:** `remove()`/`clearList()` now reach the Aho-Corasick automaton, the result cache is truly LRU and invalidates on every mutation, `contextAnalysis.scoreThreshold` and `ahoCorasick.prebuild` are honored, and importing the library no longer writes to the console
+- **`ProfanitySeverity.NONE` (0):** clean text now reports `NONE` instead of `MILD`
 
 [Read the full Performance Analysis →](./docs/SPEED_VS_ACCURACY.md)
+
+---
+
+## How It Compares
+
+Benchmarked against the most popular npm profanity filters on a 20-case evasion battery, 15 false-positive traps, and throughput tests. Reproduce with [`benchmark/compare-libraries.mjs`](./benchmark/compare-libraries.mjs).
+
+### Detection accuracy
+
+| Library | Evasion cases caught | False positives | Multi-language |
+|---|---|---|---|
+| **allprofanity** | **19/20** | **0/15** | **9 languages** |
+| obscenity | 16/20 | 1/15 (flags "shiitake") | English only |
+| bad-words | 9/20 | 0/15 | English only |
+| @2toad/profanity | 9/20 | 0/15 | English only |
+| leo-profanity | 6/20 | 0/15 | English only |
+
+The battery covers plain profanity, leet-speak (`sh1t`, `a55hole`, `b@stard`), masked words (`f*ck`, `f#ck`), stretched letters, spaced/dotted spelling, case tricks, fullwidth Unicode, homoglyphs, and Hindi in both Roman and Devanagari script.
+
+### Performance (ms per `check()` call)
+
+| Input | allprofanity | leo-profanity | bad-words | obscenity | @2toad |
+|---|---|---|---|---|---|
+| Short message (10 words) | 0.001 | 0.001 | 0.351 | 0.019 | 0.001 |
+| Large text, profane (20k words) | **0.008** | 0.473 | 13.1 | 12.5 | 0.009 |
+| Large text, clean (20k words) | 2.76 | 0.75 | 14.4 | 13.2 | 0.25 |
+
+Against **obscenity** — the only library close on detection — allprofanity is ~5× faster on clean text and over 1000× faster on profane text, with better detection and zero false positives. The thin word-list filters (leo-profanity, @2toad) are faster on clean throughput but miss half to two-thirds of the evasion battery.
 
 ---
 
@@ -35,9 +63,12 @@ A blazing-fast, multi-language profanity filter for JavaScript/TypeScript with a
 
 - **Word Boundary Matching:** Smart whole-word detection prevents false positives like "assassin" or "assistance"
 - **Pattern-Based Context Detection:** Recognizes medical terms ("anal region") and negation patterns ("not bad")
-- **Advanced Leet-Speak:** Detects obfuscated profanities (`f#ck`, `a55hole`, `sh1t`, etc.)
-- **Comprehensive Coverage:** Catches profanity while minimizing false flags
-- **Configurable Strictness:** Tune detection sensitivity to your needs
+- **Advanced Leet-Speak:** Detects obfuscated profanities (`a55hole`, `sh1t`, `b!tch`, etc.)
+- **Masked-Character Wildcards:** Resolves `f*ck`, `f#ck`, `f@ck` — without flagging `c#`, `5% off`, or email addresses
+- **Stretched & Separated Letters:** Catches `fuuuuck`, `f u c k`, `f.u.c.k` while leaving "U S A" and "hmmmm" alone
+- **Unicode Evasion Folding:** Fullwidth forms (`ｆｕｃｋ`), Cyrillic/Greek homoglyphs (`fυck`, `bаstard`), diacritics (`fück`), and zero-width/invisible character injection
+- **Position-Accurate Cleaning:** Every match maps back to the exact span in the original text, however it was obfuscated
+- **Configurable Strictness:** Each evasion pass can be toggled independently via `evasionProtection`
 
 ### Multi-Language & Flexibility
 
@@ -81,9 +112,18 @@ import profanity from 'allprofanity';
 
 // Simple check
 profanity.check('This is a clean sentence.');        // false
-profanity.check('What the f#ck is this?');           // true (leet-speak detected)
+profanity.check('What the f#ck is this?');           // true (masked character)
+profanity.check('This is sh1t');                     // true (leet-speak)
+profanity.check('fuuuuck this');                     // true (stretched letters)
+profanity.check('f u c k you');                      // true (separated letters)
+profanity.check('ｆｕｃｋ and fυck');                  // true (unicode evasion)
 profanity.check('यह एक चूतिया परीक्षण है।');           // true (Hindi)
 profanity.check('Ye ek chutiya test hai.');          // true (Hinglish Roman script)
+
+// But the classics stay clean:
+profanity.check('I live in Scunthorpe');             // false
+profanity.check('a classic bass guitar class');      // false
+profanity.check('I write c# code, get 5% off');      // false
 ```
 
 ---
@@ -91,6 +131,22 @@ profanity.check('Ye ek chutiya test hai.');          // true (Hinglish Roman scr
 ## Algorithm Configuration
 
 AllProfanity v2.2+ offers multiple algorithms optimized for different use cases. You can configure via **constructor options** or **config file**.
+
+### Plug-and-Play Presets
+
+Skip the tuning: [`examples-config/`](./examples-config/) ships ready-made configurations for every type of user — chat apps, content moderation, high-throughput APIs, medical/professional content, kids' platforms, latency-critical paths, and global multilingual audiences. Each preset is documented with who it's for, why it's tuned that way, and its trade-offs in the [preset guide](./examples-config/README.md).
+
+```bash
+# Copy the preset that fits your use case
+cp node_modules/allprofanity/examples-config/chat-app.json ./allprofanity.config.json
+```
+
+```typescript
+import { AllProfanity } from 'allprofanity';
+import config from './allprofanity.config.json';
+
+const filter = AllProfanity.fromConfig(config);
+```
 
 ### Configuration Methods
 
@@ -213,7 +269,23 @@ const filter = new AllProfanity({
 // 123x speedup on cache hits
 ```
 
-#### 5. Medical/Professional Content
+#### 5. Tuning Evasion Protection
+
+```typescript
+const filter = new AllProfanity({
+  evasionProtection: {
+    unicode: true,            // fold fullwidth/homoglyph/diacritic/invisible-char tricks
+    repeatedCharacters: true, // collapse "fuuuuck" -> "fuck"
+    maskedCharacters: true,   // resolve "f*ck", "f#ck", "f@ck"
+    separatedLetters: true    // catch "f u c k", "f.u.c.k"
+  }
+});
+// All four passes are ON by default and only run when their trigger
+// characters appear in the text, so ordinary input pays near-zero cost.
+// Disable any of them for maximum-throughput or specialised pipelines.
+```
+
+#### 6. Medical/Professional Content
 
 ```typescript
 const filter = new AllProfanity({
@@ -248,12 +320,14 @@ const filter = new AllProfanity({
 
 ### `check(text: string): boolean`
 
-Returns `true` if the text contains any profanity.
+Returns `true` if the text contains any profanity. Uses an early-exit fast
+path that stops scanning at the first confirmed match — for boolean
+moderation gates it is dramatically faster than `detect()` on profane input.
 
 ```typescript
 profanity.check('This is a clean sentence.');  // false
 profanity.check('This is a bullshit sentence.'); // true
-profanity.check('What the f#ck is this?'); // true (leet-speak)
+profanity.check('What the f#ck is this?'); // true (masked character)
 profanity.check('यह एक चूतिया परीक्षण है।'); // true (Hindi)
 ```
 
@@ -521,6 +595,12 @@ AllProfanity supports JSON-based configuration for easy setup and deployment. Th
     "detectPartialWords": boolean,                    // Detect within words (default: false)
     "defaultPlaceholder": string                      // Default censoring character (default: "*")
   },
+  "evasionProtection": {
+    "unicode": boolean,                               // Fold fullwidth/homoglyphs/diacritics/invisibles (default: true)
+    "repeatedCharacters": boolean,                    // Collapse "fuuuuck" (default: true)
+    "maskedCharacters": boolean,                      // Resolve "f*ck", "f#ck" (default: true)
+    "separatedLetters": boolean                       // Catch "f u c k" (default: true)
+  },
   "performance": {
     "enableCaching": boolean,                         // Enable result cache (default: false)
     "cacheSize": number                               // Cache size limit (default: 1000)
@@ -618,6 +698,7 @@ Severity reflects the number and variety of detected profanities:
 
 | Level     | Enum Value | Description                             |
 |-----------|------------|-----------------------------------------|
+| NONE      | 0          | No profanity detected                   |
 | MILD      | 1          | 1 unique/total word                     |
 | MODERATE  | 2          | 2 unique or total words                 |
 | SEVERE    | 3          | 3 unique/total words                    |
@@ -654,7 +735,8 @@ console.log(englishBadWords.slice(0, 5)); // ["fuck", "shit", ...]
 
 - **No wordlist exposure:** There is no `.list()` function for security and encapsulation. Use exported word arrays for samples.
 - **TRIE-based:** Scales easily to 50,000+ words.
-- **Handles leet-speak:** Catches obfuscated variants like `f#ck`, `a55hole`.
+- **Evasion-resistant:** Catches leet-speak (`a55hole`), masked characters (`f*ck`, `f#ck`), stretched letters (`fuuuuck`), separated letters (`f u c k`), and Unicode tricks (fullwidth, homoglyphs, zero-width injection).
+- **Silent by default:** Importing the library never writes to the console; instantiate with a custom `logger` for diagnostics.
 
 ---
 

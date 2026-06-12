@@ -6,14 +6,14 @@
     "useBloomFilter": true,
     "useContextAnalysis": true
   },
+  "ahoCorasick": {
+    "enabled": true,
+    "prebuild": true
+  },
   "bloomFilter": {
     "enabled": true,
     "expectedItems": 10000,
     "falsePositiveRate": 0.01
-  },
-  "ahoCorasick": {
-    "enabled": true,
-    "prebuild": true
   },
   "contextAnalysis": {
     "enabled": true,
@@ -35,7 +35,8 @@
     "separatedLetters": true
   },
   "performance": {
-    "cacheSize": 1000,
-    "enableCaching": true
-  }
+    "enableCaching": true,
+    "cacheSize": 5000
+  },
+  "silent": true
 }

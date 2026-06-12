@@ -1,0 +1,33 @@
+{
+  "$schema": "./config.schema.json",
+  "algorithm": {
+    "matching": "trie"
+  },
+  "profanityDetection": {
+    "enableLeetSpeak": true,
+    "caseSensitive": false,
+    "strictMode": false,
+    "detectPartialWords": true,
+    "defaultPlaceholder": "*"
+  },
+  "evasionProtection": {
+    "unicode": true,
+    "repeatedCharacters": true,
+    "maskedCharacters": true,
+    "separatedLetters": true
+  },
+  "whitelistWords": [
+    "class", "classic", "classes", "assassin", "assistant", "assignment",
+    "bass", "grass", "glass", "pass", "passed", "compass", "massachusetts",
+    "scunthorpe", "shitake", "shiitake", "analysis", "analyst", "canal",
+    "cocktail", "hancock", "dickens", "dickinson", "cumulative", "document",
+    "butterfly", "saturday", "therapist", "hello",
+    "guitar", "guest", "guide", "guess", "gum", "gun", "august", "argument",
+    "lull", "lullaby", "skull", "guard", "language", "linguist", "penguin"
+  ],
+  "performance": {
+    "enableCaching": true,
+    "cacheSize": 2000
+  },
+  "silent": true
+}

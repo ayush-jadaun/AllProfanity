@@ -140,6 +140,50 @@
         }
       }
     },
+    "evasionProtection": {
+      "type": "object",
+      "description": "Evasion-protection passes (all enabled by default; each only runs when its trigger characters appear in the text)",
+      "properties": {
+        "unicode": {
+          "type": "boolean",
+          "default": true,
+          "description": "Fold unicode evasion: fullwidth forms, Cyrillic/Greek homoglyphs, diacritics, zero-width/invisible characters"
+        },
+        "repeatedCharacters": {
+          "type": "boolean",
+          "default": true,
+          "description": "Collapse stretched characters (fuuuuck -> fuck)"
+        },
+        "maskedCharacters": {
+          "type": "boolean",
+          "default": true,
+          "description": "Resolve masked characters as wildcards (f*ck, f#ck, f@ck)"
+        },
+        "separatedLetters": {
+          "type": "boolean",
+          "default": true,
+          "description": "Detect words spelled with uniform single separators (f u c k, f.u.c.k)"
+        }
+      }
+    },
+    "languages": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["english", "hindi", "french", "german", "spanish", "bengali", "tamil", "telugu", "brazilian"]
+      },
+      "description": "Additional built-in language packs to load (english and hindi load by default)"
+    },
+    "whitelistWords": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Words that are never flagged as profanity"
+    },
+    "silent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Suppress all log output"
+    },
     "performance": {
       "type": "object",
       "description": "Performance optimization settings",

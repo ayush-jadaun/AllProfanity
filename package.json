@@ -1,7 +1,7 @@
 {
   "name": "allprofanity",
-  "version": "2.2.1",
-  "description": "A blazing-fast, multi-language profanity filter with advanced algorithms (Aho-Corasick, Bloom Filters) delivering 664% faster performance on large texts, intelligent leet-speak detection, and pattern-based context analysis",
+  "version": "2.3.0",
+  "description": "Evasion-resistant, multi-language profanity filter: leet-speak, masked words (f*ck), stretched letters, spaced-out spelling, and Unicode homoglyph detection with zero false positives on the classic traps. 9 languages, sub-millisecond checks, advanced algorithms (Aho-Corasick, Bloom Filters), zero dependencies.",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,7 +34,12 @@
     "typescript",
     "performance",
     "fast",
-    "leet-speak"
+    "leet-speak",
+    "evasion-detection",
+    "homoglyph",
+    "unicode",
+    "text-moderation",
+    "chat-filter"
   ],
   "author": {
     "name": "Ayush Jadaun",
@@ -58,6 +63,7 @@
   "files": [
     "dist",
     "bin",
+    "examples-config",
     "LICENSE",
     "README.md",
     "allprofanity.config.example.json",

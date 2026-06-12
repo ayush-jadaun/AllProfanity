@@ -1,0 +1,24 @@
+{
+  "$schema": "./config.schema.json",
+  "algorithm": {
+    "matching": "trie"
+  },
+  "profanityDetection": {
+    "enableLeetSpeak": true,
+    "caseSensitive": false,
+    "strictMode": false,
+    "detectPartialWords": false,
+    "defaultPlaceholder": "*"
+  },
+  "evasionProtection": {
+    "unicode": true,
+    "repeatedCharacters": true,
+    "maskedCharacters": true,
+    "separatedLetters": true
+  },
+  "performance": {
+    "enableCaching": true,
+    "cacheSize": 2000
+  },
+  "silent": true
+}

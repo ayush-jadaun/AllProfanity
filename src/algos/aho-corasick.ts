@@ -20,12 +20,14 @@ interface TrieNode {
 export class AhoCorasick {
   private root: TrieNode;
   private patterns: string[];
+  private patternSet: Set<string>;
   private compiled: boolean = false;
 
   constructor(patterns: string[] = []) {
-    this.patterns = [...patterns];
+    this.patternSet = new Set(patterns.filter((p) => p && p.length > 0));
+    this.patterns = [...this.patternSet];
     this.root = this.createNode();
-    if (patterns.length > 0) {
+    if (this.patterns.length > 0) {
       this.buildAutomaton();
     }
   }
@@ -47,17 +49,42 @@ export class AhoCorasick {
    * Add patterns to the automaton
    */
   addPatterns(patterns: string[]): void {
-    this.patterns.push(...patterns);
-    this.compiled = false;
+    for (const pattern of patterns) {
+      this.addPattern(pattern);
+    }
   }
 
   /**
-   * Add a single pattern to the automaton
+   * Add a single pattern to the automaton (duplicates are ignored)
    */
   addPattern(pattern: string): void {
-    if (pattern && pattern.length > 0) {
+    if (pattern && pattern.length > 0 && !this.patternSet.has(pattern)) {
+      this.patternSet.add(pattern);
       this.patterns.push(pattern);
       this.compiled = false;
+    }
+  }
+
+  /**
+   * Remove a pattern from the automaton
+   * @returns True if the pattern existed and was removed
+   */
+  removePattern(pattern: string): boolean {
+    if (!this.patternSet.has(pattern)) {
+      return false;
+    }
+    this.patternSet.delete(pattern);
+    this.patterns = this.patterns.filter((p) => p !== pattern);
+    this.compiled = false;
+    return true;
+  }
+
+  /**
+   * Compile the automaton now instead of lazily on first search
+   */
+  build(): void {
+    if (!this.compiled) {
+      this.buildAutomaton();
     }
   }
 
@@ -269,6 +296,7 @@ export class AhoCorasick {
    */
   clear(): void {
     this.patterns = [];
+    this.patternSet.clear();
     this.root = this.createNode();
     this.compiled = false;
   }

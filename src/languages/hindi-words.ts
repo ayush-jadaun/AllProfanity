@@ -68,7 +68,7 @@ const hindiBadWords: string[] = [
   // --- Variations of 'Behenchod' ---
   "behanchood", "behenchood", "bhenchood", "bhainchod", "bhain chood", "bahenchod",
   "behnchod", "behncod", "behn chod", "bhen cod", "bhen chood", "bahanchod", "bhenco",
-  "bhencho", "b c", "be si", "bee see", "behenkechodo", "bhenkelode", // Compound
+  "bhencho", "behenkechodo", "bhenkelode", // Compound
   "bkl", // Abbreviation for Behen ke Lode
   "bahan chod", "bahan ke",
 
@@ -76,7 +76,7 @@ const hindiBadWords: string[] = [
   "madar chod", "madarchodd", "madarchoddd", "madar chood", "madrchod", "madarchud",
   "mader chod", "maderchood", "maderchod", "modarchod", "mother chod",
   "motherchodd", "mother fucker", // English, but used in Hinglish context
-  "maachod", "maa chod", "ma chod", "maa chood", "m c", "em cee", "em see",
+  "maachod", "maa chod", "ma chod", "maa chood",
   "madarjaad", "madarzaat", "madarjatt", "madarchom", // Slang/Typo
   "teri maa chod", "teri ma ki chut", // Compound
 
