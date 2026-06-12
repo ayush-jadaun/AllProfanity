@@ -52,7 +52,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ayush-jadaun/AllProfanity.git"
+    "url": "git+https://github.com/ayush-jadaun/AllProfanity.git"
   },
   "homepage": "https://github.com/ayush-jadaun/AllProfanity#readme",
   "devDependencies": {
@@ -74,7 +74,7 @@
     "CONTRIBUTORS.md"
   ],
   "bin": {
-    "allprofanity": "./bin/init.js",
-    "allprofanity-mcp": "./bin/mcp.js"
+    "allprofanity": "bin/init.js",
+    "allprofanity-mcp": "bin/mcp.js"
   }
 }
