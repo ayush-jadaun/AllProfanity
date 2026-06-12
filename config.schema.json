@@ -170,7 +170,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["english", "hindi", "french", "german", "spanish", "bengali", "tamil", "telugu", "brazilian"]
+        "enum": ["english", "hindi", "french", "german", "spanish", "bengali", "tamil", "telugu", "brazilian", "greek"]
       },
       "description": "Additional built-in language packs to load (english and hindi load by default)"
     },

@@ -1,11 +1,16 @@
-# AllProfanity
+﻿# AllProfanity
 
-The most evasion-resistant multi-language profanity filter for JavaScript/TypeScript. Catches leet-speak (`sh1t`), masked words (`f*ck`, `f#ck`), stretched letters (`fuuuuck`), spaced-out spelling (`f u c k`), Unicode tricks (fullwidth `ｆｕｃｋ`, homoglyph `fυck`, zero-width injection) and nine languages — with zero false positives on the classic traps ("Scunthorpe", "classic", "bass") and sub-millisecond checks.
+The most evasion-resistant multi-language profanity filter for JavaScript/TypeScript. Catches leet-speak (`sh1t`), masked words (`f*ck`, `f#ck`), stretched letters (`fuuuuck`), spaced-out spelling (`f u c k`), Unicode tricks (fullwidth `ｆｕｃｋ`, homoglyph `fυck`, zero-width injection) and ten languages — with zero false positives on the classic traps ("Scunthorpe", "classic", "bass") and sub-millisecond checks.
 
 [![npm version](https://img.shields.io/npm/v/allprofanity.svg)](https://www.npmjs.com/package/allprofanity)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
+
+## What's New in v2.4.0
+
+- **Greek language support** — contributed by [E-Kou](https://github.com/E-Kou) ([#3](https://github.com/ayush-jadaun/AllProfanity/pull/3)): `loadLanguage('greek')` with ~46 entries
+- **Accent-insensitive matching for all languages:** dictionary entries are also stored in unicode-folded form, so `μαλάκας` matches `ΜΑΛΑΚΑΣ`/`μαλακας`, and accented entries like `pédé` match `pede` — and vice versa
 
 ## What's New in v2.3.0
 
@@ -28,7 +33,7 @@ Benchmarked against the most popular npm profanity filters on a 20-case evasion 
 
 | Library | Evasion cases caught | False positives | Multi-language |
 |---|---|---|---|
-| **allprofanity** | **19/20** | **0/15** | **9 languages** |
+| **allprofanity** | **19/20** | **0/15** | **10 languages** |
 | obscenity | 16/20 | 1/15 (flags "shiitake") | English only |
 | bad-words | 9/20 | 0/15 | English only |
 | @2toad/profanity | 9/20 | 0/15 | English only |
@@ -73,7 +78,7 @@ Against **obscenity** — the only library close on detection — allprofanity i
 
 ### Multi-Language & Flexibility
 
-- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese
+- **Multi-Language Support:** Built-in dictionaries for English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese, Greek
 - **Multiple Scripts:** Latin/Roman (Hinglish) and native scripts (Devanagari, Tamil, Telugu, etc.)
 - **Custom Dictionaries:** Add/remove words or entire language packs at runtime
 - **Whitelisting:** Exclude safe words from detection
@@ -525,7 +530,7 @@ Returns the names of all available built-in language packs.
 
 ```typescript
 console.log(profanity.getAvailableLanguages());
-// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu', 'brazilian']
+// ['english', 'hindi', 'french', 'german', 'spanish', 'bengali', 'tamil', 'telugu', 'brazilian', 'greek']
 ```
 
 ---
@@ -713,7 +718,7 @@ Severity reflects the number and variety of detected profanities:
 
 ## Language Support
 
-- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese
+- **Built-in:** English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese, Greek
 - **Scripts:** Latin/Roman, Devanagari, Tamil, Telugu, Bengali, etc.
 - **Mixed Content:** Handles mixed-language and code-switched sentences.
 

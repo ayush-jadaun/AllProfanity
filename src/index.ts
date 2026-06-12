@@ -8,6 +8,7 @@ import bengaliBadWords from "./languages/bengali-words.js";
 import tamilBadWords from "./languages/tamil-words.js";
 import teluguBadWords from "./languages/telugu-words.js";
 import brazilianBadWords from "./languages/brazilian-words.js";
+import greekBadWords from "./languages/greek-words.js";
 
 // Advanced algorithm imports
 import { AhoCorasick, Match as AhoMatch } from "./algos/aho-corasick.js";
@@ -24,6 +25,7 @@ export { default as bengaliBadWords } from "./languages/bengali-words.js";
 export { default as tamilBadWords } from "./languages/tamil-words.js";
 export { default as teluguBadWords } from "./languages/telugu-words.js";
 export { default as brazilianBadWords } from "./languages/brazilian-words.js";
+export { default as greekBadWords } from "./languages/greek-words.js";
 
 /**
  * Logger interface for AllProfanity library logging operations.
@@ -1098,6 +1100,7 @@ export class AllProfanity {
     tamil: tamilBadWords || [],
     telugu: teluguBadWords || [],
     brazilian: brazilianBadWords || [],
+    greek: greekBadWords || [],
   };
 
   private readonly leetMappings: Map<string, string> = new Map([
@@ -1469,16 +1472,25 @@ export class AllProfanity {
         continue;
       }
 
-      // Latin letters with diacritics: decompose and strip the marks.
-      // Limited to the Latin blocks so other scripts keep their composed forms.
-      if (code >= 0x00c0 && code < 0x0250) {
+      // Letters with diacritics: decompose and strip the marks.
+      // Latin blocks plus Greek (incl. Greek Extended, whose precomposed
+      // accented forms fold to their base letters: ά -> α). Other scripts
+      // keep their composed forms.
+      if (
+        (code >= 0x00c0 && code < 0x0250) ||
+        (code >= 0x0370 && code <= 0x03ff) ||
+        (code >= 0x1f00 && code <= 0x1fff)
+      ) {
         for (const piece of char.normalize("NFD")) {
           const pieceCode = piece.charCodeAt(0);
           if (pieceCode >= 0x0300 && pieceCode <= 0x036f) {
             changed = true;
             continue;
           }
-          const folded = this.caseSensitive ? piece : piece.toLowerCase();
+          const lowered = this.caseSensitive ? piece : piece.toLowerCase();
+          // Route decomposed bases through the confusables map too, so
+          // accented and plain forms fold identically (ά -> α -> a).
+          const folded = CONFUSABLES.get(lowered) ?? lowered;
           parts.push(folded);
           starts.push(i);
           ends.push(i + 1);
@@ -2559,6 +2571,12 @@ export class AllProfanity {
       // Bloom filter entries cannot be deleted, but stale entries only cost a
       // skipped quick-rejection — they can never produce a match by themselves.
       this.ahoCorasickAutomaton?.removePattern(normalizedWord);
+      // Remove the unicode-folded twin stored by addWordToTrie
+      const folded = this.unicodeNormalizeWithMap(normalizedWord)?.normalized;
+      if (folded && folded !== normalizedWord) {
+        this.profanityTrie.removeWord(folded);
+        this.ahoCorasickAutomaton?.removePattern(folded);
+      }
     }
     this.invalidateCache();
   }
@@ -2839,6 +2857,18 @@ export class AllProfanity {
 
     // Add to Trie (always used as fallback)
     this.profanityTrie.addWord(normalizedWord);
+
+    // Also store the unicode-folded form (accents stripped, homoglyphs
+    // folded) so accented dictionary entries match unaccented input and
+    // vice versa: "μαλάκας" <-> "ΜΑΛΑΚΑΣ", "pédé" <-> "pede". The folded
+    // input variant produced by the unicode evasion pass then aligns with
+    // the folded dictionary form.
+    const folded = this.unicodeNormalizeWithMap(normalizedWord)?.normalized;
+    if (folded && folded !== normalizedWord) {
+      this.profanityTrie.addWord(folded);
+      this.bloomFilter?.add(folded);
+      this.ahoCorasickAutomaton?.addPattern(folded);
+    }
 
     // Add to Bloom Filter if enabled. Constituent tokens of multi-word or
     // symbol-containing entries are added too, so the token-level quick

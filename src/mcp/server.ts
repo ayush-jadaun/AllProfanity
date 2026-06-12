@@ -289,7 +289,7 @@ export function createMcpServer(
       description:
         "Load an additional built-in language dictionary. Available: " +
         "english, hindi, french, german, spanish, bengali, tamil, telugu, " +
-        "brazilian. English and Hindi are loaded by default.",
+        "brazilian, greek. English and Hindi are loaded by default.",
       inputSchema: {
         type: "object",
         properties: {

@@ -60,7 +60,7 @@ describe("Configuration presets", () => {
     expect(filter.check("sh1t")).toBe(false);
   });
 
-  test("multilingual-global loads all nine languages", () => {
+  test("multilingual-global loads all ten languages", () => {
     const filter = loadPreset("multilingual-global.json");
     expect(filter.getLoadedLanguages().sort()).toEqual(
       [
@@ -69,6 +69,7 @@ describe("Configuration presets", () => {
         "english",
         "french",
         "german",
+        "greek",
         "hindi",
         "spanish",
         "tamil",
@@ -77,6 +78,7 @@ describe("Configuration presets", () => {
     );
     expect(filter.check("merde alors")).toBe(true); // French
     expect(filter.check("das ist scheisse")).toBe(true); // German
+    expect(filter.check("είσαι μαλάκας")).toBe(true); // Greek
   });
 });
 

@@ -88,7 +88,7 @@ Every preset works as-is and can be tweaked afterwards — the JSON schema (`con
 
 ### `multilingual-global.json` — Global audiences, international platforms
 
-**Why:** Loads all nine built-in language packs (English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese) covering Latin, Devanagari, Bengali, Tamil and Telugu scripts, plus Hinglish romanizations. The prebuilt Aho-Corasick automaton keeps scanning single-pass even with the combined dictionary, and full evasion protection covers Unicode tricks across scripts.
+**Why:** Loads all ten built-in language packs (English, Hindi, French, German, Spanish, Bengali, Tamil, Telugu, Brazilian Portuguese, Greek) covering Latin, Devanagari, Bengali, Tamil and Telugu scripts, plus Hinglish romanizations. The prebuilt Aho-Corasick automaton keeps scanning single-pass even with the combined dictionary, and full evasion protection covers Unicode tricks across scripts.
 
 **Trade-off:** Larger dictionary means slightly more memory (~a few MB) and startup time; per-check speed is unaffected thanks to the automaton.
 

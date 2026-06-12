@@ -1,6 +1,6 @@
 {
   "name": "allprofanity",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Evasion-resistant, multi-language profanity filter: leet-speak, masked words (f*ck), stretched letters, spaced-out spelling, and Unicode homoglyph detection with zero false positives on the classic traps. 9 languages, sub-millisecond checks, advanced algorithms (Aho-Corasick, Bloom Filters), zero dependencies.",
   "main": "dist/index.js",
   "module": "dist/index.js",
